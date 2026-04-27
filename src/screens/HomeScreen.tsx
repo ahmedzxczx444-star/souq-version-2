@@ -1,3 +1,4 @@
+import heroImg from "../assets/hero.jpg";
 import React, { useEffect, useState } from "react";
 import { Car, Dealer } from "../types";
 import { api } from "../services/api";
@@ -82,7 +83,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onCarClick, onDealerClic
       <header className="relative h-[500px] flex flex-col items-center pt-16 px-6 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img 
-            src="https://images.unsplash.com/photo-1603584173870-7f3ca9128116?q=80&w=1920&auto=format&fit=crop" 
+            src={heroImg}
             className="w-full h-full object-cover scale-105"
             referrerPolicy="no-referrer"
           />
