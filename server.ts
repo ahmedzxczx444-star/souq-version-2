@@ -742,7 +742,8 @@ async function startServer() {
 
   // Auth Routes
   app.post("/api/auth/register", authLimiter, async (req, res) => {
-    const { email, password, name, role, phone, whatsapp_number, branches_count, address, latitude, longitude, logo, captchaToken } = req.body;
+    let { email, password, name, role, phone, whatsapp_number, branches_count, address, latitude, longitude, logo, captchaToken } = req.body;
+    email = validator.normalizeEmail(email);
     
     // Input Validation
     if (!email || !password || !name) {
@@ -867,7 +868,8 @@ async function startServer() {
   });
 
   app.post("/api/auth/login", authLimiter, async (req, res) => {
-    const { email, password, captchaToken } = req.body;
+    let { email, password, captchaToken } = req.body;
+    email = validator.normalizeEmail(email);
     
     // Input Validation
     if (!email || !password) {
