@@ -18,6 +18,8 @@ interface DealerDashboardProps {
 
 export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, onAddCar, onAddReel, onEditCar, t, initialSection = 'cars' }) => {
   const [cars, setCars] = useState<Car[]>([]);
+  const [reels, setReels] = useState<any[]>([]);
+  const [deletingReelId, setDeletingReelId] = useState<number | null>(null);
   const [dealerProfile, setDealerProfile] = useState<Dealer | null>(null);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -27,6 +29,7 @@ export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, 
 
   useEffect(() => {
     fetchCars();
+    fetchReels();
     fetchDealerProfile();
     fetchStats();
   }, []);
@@ -239,72 +242,100 @@ export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, 
                 <p className="text-gray-400 font-bold">No cars listed yet.</p>
               </div>
             ) : (
+              
               <div className="grid gap-4">
-                <AnimatePresence>
-                  {cars.map((car) => (
-                    <motion.div
-                      key={car.id}
-                      layout
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-white rounded-3xl p-3 border border-gray-100 shadow-sm flex gap-4"
-                    >
-                      <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0">
-                        <img
-                          src={car.images[0]}
-                          alt={car.make}
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      </div>
-                      <div className="flex-1 flex flex-col justify-between py-1">
-                        <div>
-                          <h3 className="font-black text-gray-900 text-sm">
-                            {car.make} {car.model}
-                          </h3>
-                          <p className="text-emerald-500 font-black text-xs mt-1">
-                            {car.price.toLocaleString()} ج.م
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => onEditCar(car)}
-                            className="flex-1 flex items-center justify-center gap-1 bg-gray-50 text-gray-900 py-2 rounded-xl text-[10px] font-bold hover:bg-gray-100 transition-colors"
-                          >
-                            <Edit2 size={12} />
-                            {t.edit}
-                          </button>
-                          {subscriptionsEnabled && (
-                            <PromoteButton 
-                              carId={car.id} 
-                              userId={user.id} 
-                              isPromoted={car.isPromoted} 
-                              onSuccess={fetchCars}
-                              className="flex-1"
-                            />
-                          )}
-                          <button
-                            onClick={() => handleDelete(car.id)}
-                            disabled={deletingId === car.id}
-                            className="flex-1 flex items-center justify-center gap-1 bg-red-50 text-red-500 py-2 rounded-xl text-[10px] font-bold hover:bg-red-100 transition-colors disabled:opacity-50"
-                          >
-                            {deletingId === car.id ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <>
-                                <Trash2 size={12} />
-                                {t.delete}
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
+  <AnimatePresence>
+    {cars.map((car) => (
+      <motion.div
+        key={car.id}
+        layout
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-3xl p-3 border border-gray-100 shadow-sm flex gap-4"
+      >
+        <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0">
+          <img
+            src={car.images[0]}
+            alt={car.make}
+            className="w-full h-full object-cover"
+          />
+        </div>
+
+        <div className="flex-1 flex flex-col justify-between py-1">
+          <div>
+            <h3 className="font-black text-gray-900 text-sm">
+              {car.make} {car.model}
+            </h3>
+            <p className="text-emerald-500 font-black text-xs mt-1">
+              {car.price.toLocaleString()} ج.م
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => onEditCar(car)}
+              className="flex-1 bg-gray-50 py-2 rounded-xl text-xs font-bold"
+            >
+              تعديل
+            </button>
+
+            <button
+              onClick={() => handleDelete(car.id)}
+              className="flex-1 bg-red-50 text-red-500 py-2 rounded-xl text-xs font-bold"
+            >
+              حذف
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    ))}
+  </AnimatePresence>
+
+  {/* 👇 الريلز */}
+  {reels.map((reel) => (
+    <div
+      key={reel.id}
+      className="bg-white rounded-3xl p-3 border border-gray-100 shadow-sm flex gap-4"
+    >
+      <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-black">
+        <video
+
+          src={reel.video_url}
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      <div className="flex gap-2 mt-2">
+  <button
+    onClick={() => handleDeleteReel(reel.id)}
+    className="flex-1 bg-red-50 text-red-500 py-2 rounded-xl text-xs font-bold"
+  >
+    حذف
+  </button>
+</div>
+
+      <div className="flex-1 flex flex-col justify-between py-1">
+        <div>
+          <h3 className="font-black text-gray-900 text-sm">Reel</h3>
+          <p className="text-gray-400 text-xs">
+            {reel.make} {reel.model}
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <button className="flex-1 bg-gray-50 py-2 rounded-xl text-xs font-bold">
+            تعديل
+          </button>
+
+          <button className="flex-1 bg-red-50 text-red-500 py-2 rounded-xl text-xs font-bold">
+            حذف
+          </button>
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
           </section>
         ) : (
           <section className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm">

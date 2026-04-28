@@ -1584,6 +1584,33 @@ async function startServer() {
     }
   });
 
+app.get("/api/dealer/reels", authenticate, (req: any, res) => {
+  if (req.user.role !== 'dealer') {
+    return res.status(403).json({ error: "Only dealers can access this" });
+  }
+
+  const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(req.user.id) as any;
+
+  if (!dealer) {
+    return res.status(404).json({ error: "Dealer not found" });
+  }
+
+  const reels = db.prepare(`
+  SELECT r.*, c.make, c.model
+  FROM reels r
+  LEFT JOIN cars c ON r.car_id = c.id
+  WHERE r.dealer_id = ?
+  ORDER BY r.created_at DESC
+`).all(dealer.id);
+
+  res.json(reels);
+});
+
+
+
+
+
+
   // WhatsApp Cooldown
   app.post("/api/contact/whatsapp-click", cooldownMiddleware("whatsapp_click", 5), (req, res) => {
     res.json({ success: true });
