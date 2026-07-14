@@ -141,6 +141,19 @@ export const api = {
       const res = await fetch(`${API_BASE}/reels/${id}/view`, { method: "POST" });
       return res.json();
     },
+    getDealerReels: async (): Promise<Reel[]> => {
+      const res = await fetch(`${API_BASE}/dealer/reels`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch dealer reels");
+      return res.json();
+    },
+    delete: async (id: number): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/reels/${id}`, {
+        method: "DELETE",
+        headers: getHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to delete reel");
+      return res.json();
+    },
     like: async (id: number): Promise<any> => {
       const res = await fetch(`${API_BASE}/reels/${id}/like`, { 
         method: "POST",

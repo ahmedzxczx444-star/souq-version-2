@@ -51,6 +51,15 @@ ${carUrl}`;
     }
   };
 
+  const formatWhatsAppNumber = (number?: string) => {
+    if (!number) return "";
+    let digits = number.replace(/\D/g, "");
+    if (digits.startsWith("00")) digits = digits.slice(2);
+    if (digits.startsWith("0")) digits = "20" + digits.slice(1);
+    else if (!digits.startsWith("20")) digits = "20" + digits;
+    return digits;
+  };
+
   if (loading || !car) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
@@ -206,8 +215,8 @@ ${carUrl}`;
 
       {/* Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 p-6 flex gap-4 z-50">
-        <a 
-          href={`https://wa.me/${car.dealer_whatsapp}?text=${encodeURIComponent(`السلام عليكم، أنا مهتم بسيارة ${car.make} ${car.model} ${car.year} موديل الموجودة على سوق السيارات.
+        <a
+          href={`https://wa.me/${formatWhatsAppNumber(car.dealer_whatsapp)}?text=${encodeURIComponent(`السلام عليكم، أنا مهتم بسيارة ${car.make} ${car.model} ${car.year} موديل الموجودة على سوق السيارات.
 السعر: ${car.price.toLocaleString()} ج.م
 الرابط: ${window.location.origin}/car/${car.id}
 الصورة: ${car.images[0]}`)}`}

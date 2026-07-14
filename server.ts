@@ -1562,6 +1562,49 @@ async function startServer() {
     res.json({ id: result.lastInsertRowid });
   });
 
+  app.get("/api/dealer/reels", authenticate, (req: any, res) => {
+    if (req.user.role !== 'dealer') return res.status(403).json({ error: "Only dealers can access this" });
+
+    const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(req.user.id) as any;
+    if (!dealer) return res.status(404).json({ error: "Dealer profile not found" });
+
+    const reels = db.prepare(`
+      SELECT r.*, c.make, c.model
+      FROM reels r
+      LEFT JOIN cars c ON r.car_id = c.id
+      WHERE r.dealer_id = ?
+      ORDER BY r.id DESC
+    `).all(dealer.id);
+    res.json(reels);
+  });
+
+  app.delete("/api/reels/:id", authenticate, (req: any, res) => {
+    if (req.user.role !== 'dealer') return res.status(403).json({ error: "Only dealers can delete reels" });
+
+    const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(req.user.id) as any;
+    if (!dealer) return res.status(404).json({ error: "Dealer profile not found" });
+
+    const reel = db.prepare("SELECT dealer_id, video_url FROM reels WHERE id = ?").get(req.params.id) as any;
+    if (!reel) return res.status(404).json({ error: "Reel not found" });
+
+    if (reel.dealer_id !== dealer.id) {
+      return res.status(403).json({ error: "Unauthorized to delete this reel" });
+    }
+
+    try {
+      db.prepare("DELETE FROM reel_likes WHERE reel_id = ?").run(req.params.id);
+      db.prepare("DELETE FROM reels WHERE id = ?").run(req.params.id);
+      if (reel.video_url) {
+        const videoPath = path.join(process.cwd(), reel.video_url.replace(/^\//, ""));
+        fs.unlink(videoPath, () => {});
+      }
+      res.json({ success: true });
+    } catch (e) {
+      console.error("[DELETE] Error deleting reel:", e);
+      res.status(500).json({ error: "Failed to delete reel" });
+    }
+  });
+
   app.post("/api/reels/:id/view", (req, res) => {
     db.prepare("UPDATE reels SET views = views + 1 WHERE id = ?").run(req.params.id);
     res.json({ success: true });
@@ -1583,31 +1626,6 @@ async function startServer() {
       res.json({ success: true, liked: true });
     }
   });
-
-app.get("/api/dealer/reels", authenticate, (req: any, res) => {
-  if (req.user.role !== 'dealer') {
-    return res.status(403).json({ error: "Only dealers can access this" });
-  }
-
-  const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(req.user.id) as any;
-
-  if (!dealer) {
-    return res.status(404).json({ error: "Dealer not found" });
-  }
-
-  const reels = db.prepare(`
-  SELECT r.*, c.make, c.model
-  FROM reels r
-  LEFT JOIN cars c ON r.car_id = c.id
-  WHERE r.dealer_id = ?
-  ORDER BY r.created_at DESC
-`).all(dealer.id);
-
-  res.json(reels);
-});
-
-
-
 
 
 
