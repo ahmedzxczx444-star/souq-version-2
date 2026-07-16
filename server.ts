@@ -15,6 +15,7 @@ import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import validator from "validator";
 import xss from "xss-clean";
+import { initOtpService, sendOtp, verifyOtp } from "./services/otpService";
 
 dotenv.config();
 
@@ -279,6 +280,9 @@ try {
 try {
   db.exec("ALTER TABLE reels ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP");
 } catch (e) {}
+
+// OTP verification tables (registration, forgot-password, change-email)
+initOtpService(db);
 
 // Seed Data if empty
 const dealerCount = db.prepare("SELECT COUNT(*) as count FROM dealers").get() as { count: number };
@@ -744,7 +748,7 @@ async function startServer() {
   app.post("/api/auth/register", authLimiter, async (req, res) => {
     let { email, password, name, role, phone, whatsapp_number, branches_count, address, latitude, longitude, logo, captchaToken } = req.body;
     email = validator.normalizeEmail(email);
-    
+
     // Input Validation
     if (!email || !password || !name) {
       return res.status(400).json({ error: "All required fields must be filled" });
@@ -762,45 +766,44 @@ async function startServer() {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const verificationToken = jwt.sign({ email }, JWT_SECRET, { expiresIn: '24h' });
+    const escapedName = validator.escape(name);
 
     try {
-      const result = db.prepare("INSERT INTO users (email, password, name, role, verification_token, is_verified) VALUES (?, ?, ?, ?, ?, ?)").run(
-        validator.normalizeEmail(email), 
-        hashedPassword, 
-        validator.escape(name), 
-        role || 'user', 
-        verificationToken,
-        role === 'dealer' ? 0 : 1 // Auto-verify normal users for now, dealers must verify
+      const result = db.prepare("INSERT INTO users (email, password, name, role, is_verified) VALUES (?, ?, ?, ?, 0)").run(
+        email,
+        hashedPassword,
+        escapedName,
+        role || 'user'
       );
       const userId = result.lastInsertRowid;
-      
+
       if (role === 'dealer') {
         db.prepare(`
-          INSERT INTO dealers (user_id, name, logo, phone, whatsapp_number, branches_count, address, latitude, longitude, rating) 
+          INSERT INTO dealers (user_id, name, logo, phone, whatsapp_number, branches_count, address, latitude, longitude, rating)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
-          userId, 
-          validator.escape(name), 
-          logo || `https://picsum.photos/seed/${userId}/200`, 
-          validator.escape(phone || ''), 
-          validator.escape(whatsapp_number || ''), 
-          branches_count || 1, 
-          validator.escape(address || ''), 
-          latitude || null, 
-          longitude || null, 
+          userId,
+          escapedName,
+          logo || `https://picsum.photos/seed/${userId}/200`,
+          validator.escape(phone || ''),
+          validator.escape(whatsapp_number || ''),
+          branches_count || 1,
+          validator.escape(address || ''),
+          latitude || null,
+          longitude || null,
           5.0
         );
-
-        console.log(`[EMAIL SIMULATION] Verification email sent to ${email}. Token: ${verificationToken}`);
-        console.log(`[VERIFY LINK] http://localhost:3000/api/auth/verify/${verificationToken}`);
       }
 
-      const token = jwt.sign({ id: userId, email, name, role: role || 'user' }, JWT_SECRET, { expiresIn: '1h' });
-      res.json({ 
-        token, 
-        user: { id: userId, email, name, role: role || 'user' },
-        requiresVerification: role === 'dealer'
+      const otpResult = await sendOtp(email, "register", req.ip, escapedName);
+      if (!otpResult.success) {
+        return res.status(429).json({ error: otpResult.error });
+      }
+
+      res.json({
+        success: true,
+        email,
+        requiresOtpVerification: true
       });
     } catch (e) {
       console.error("Registration error:", e);
@@ -808,69 +811,125 @@ async function startServer() {
     }
   });
 
-  app.get("/api/auth/verify/:token", (req, res) => {
-    const { token } = req.params;
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
-      const result = db.prepare("UPDATE users SET is_verified = 1, verification_token = NULL WHERE verification_token = ?").run(token);
-      
-      if (result.changes === 0) {
-        return res.send("<h1>رابط التحقق غير صالح أو منتهي الصلاحية</h1>");
+  // Send/resend an OTP for registration, forgot-password, or change-email.
+  // Resend uses the exact same underlying logic — there is only one send path.
+  const handleSendOtp = async (req: any, res: any) => {
+    let { email, purpose } = req.body;
+    email = validator.normalizeEmail(email);
+    const allowedPurposes = ["register", "forgot_password", "change_email"];
+
+    if (!email || !validator.isEmail(email)) {
+      return res.status(400).json({ error: "Valid email is required" });
+    }
+    if (!allowedPurposes.includes(purpose)) {
+      return res.status(400).json({ error: "Invalid purpose" });
+    }
+
+    const user = db.prepare("SELECT id, name, is_verified FROM users WHERE email = ?").get(email) as any;
+
+    if (purpose === "forgot_password" && !user) {
+      return res.json({ success: true }); // Don't reveal if the account exists
+    }
+    if (purpose === "register" && user?.is_verified) {
+      return res.status(400).json({ error: "Email already verified" });
+    }
+
+    const result = await sendOtp(email, purpose, req.ip, user?.name);
+    if (!result.success) {
+      return res.status(429).json(result);
+    }
+    res.json({ success: true });
+  };
+
+  app.post("/api/auth/send-otp", authLimiter, handleSendOtp);
+  app.post("/api/auth/resend-otp", authLimiter, handleSendOtp);
+
+  app.post("/api/auth/verify-otp", authLimiter, async (req: any, res) => {
+    let { email, otp, purpose } = req.body;
+    email = validator.normalizeEmail(email);
+
+    if (!email || !otp || !purpose) {
+      return res.status(400).json({ error: "Email, code, and purpose are required" });
+    }
+
+    const result = await verifyOtp(email, purpose, String(otp));
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    if (purpose === "register") {
+      const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email) as any;
+      if (!user) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+      db.prepare("UPDATE users SET is_verified = 1 WHERE id = ?").run(user.id);
+
+      let dealerId = null;
+      if (user.role === 'dealer') {
+        const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(user.id) as any;
+        dealerId = dealer?.id;
       }
 
-      res.send(`
-        <div style="text-align: center; padding: 50px; font-family: sans-serif;">
-          <h1 style="color: #10b981;">تم التحقق من البريد الإلكتروني بنجاح!</h1>
-          <p>يمكنك الآن تسجيل الدخول إلى حسابك.</p>
-          <a href="/" style="display: inline-block; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 12px; margin-top: 20px;">العودة للتطبيق</a>
-        </div>
-      `);
-    } catch (e) {
-      res.send("<h1>رابط التحقق غير صالح أو منتهي الصلاحية</h1>");
+      logActivity("Email verified", user.id, `User ${user.id} verified their email via OTP`);
+      const token = jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role, dealerId }, JWT_SECRET, { expiresIn: '1h' });
+      return res.json({
+        success: true,
+        token,
+        user: { id: user.id, email: user.email, name: user.name, role: user.role, dealerId }
+      });
     }
+
+    res.json({ success: true });
   });
 
-  app.post("/api/auth/forgot-password", async (req, res) => {
-    const { email } = req.body;
-    const user = db.prepare("SELECT id FROM users WHERE email = ?").get(email) as any;
-    
+  app.post("/api/auth/forgot-password", authLimiter, async (req, res) => {
+    let { email } = req.body;
+    email = validator.normalizeEmail(email);
+    const user = db.prepare("SELECT id, name FROM users WHERE email = ?").get(email) as any;
+
     if (!user) {
       return res.json({ success: true }); // Don't reveal if user exists
     }
 
-    const resetToken = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '1h' });
-    const expires = new Date(Date.now() + 3600000).toISOString();
+    const result = await sendOtp(email, "forgot_password", req.ip, user.name);
+    if (!result.success) {
+      return res.status(429).json(result);
+    }
 
-    db.prepare("UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?").run(resetToken, expires, user.id);
-
-    console.log(`[EMAIL SIMULATION] Password reset email sent to ${email}. Token: ${resetToken}`);
-    
     res.json({ success: true });
   });
 
-  app.post("/api/auth/reset-password", async (req, res) => {
-    const { token, password } = req.body;
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
-      const user = db.prepare("SELECT * FROM users WHERE id = ? AND reset_token = ?").get(decoded.id, token) as any;
+  app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
+    let { email, otp, password } = req.body;
+    email = validator.normalizeEmail(email);
 
-      if (!user || new Date(user.reset_token_expires) < new Date()) {
-        return res.status(400).json({ error: "رابط إعادة التعيين غير صالح أو منتهي الصلاحية" });
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-      db.prepare("UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?").run(hashedPassword, user.id);
-
-      res.json({ success: true });
-    } catch (e) {
-      res.status(400).json({ error: "رابط إعادة التعيين غير صالح أو منتهي الصلاحية" });
+    if (!email || !otp || !password) {
+      return res.status(400).json({ error: "Email, code, and new password are required" });
     }
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    const result = await verifyOtp(email, "forgot_password", String(otp));
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    const user = db.prepare("SELECT id FROM users WHERE email = ?").get(email) as any;
+    if (!user) {
+      return res.status(404).json({ error: "Account not found" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashedPassword, user.id);
+
+    res.json({ success: true });
   });
 
   app.post("/api/auth/login", authLimiter, async (req, res) => {
     let { email, password, captchaToken } = req.body;
     email = validator.normalizeEmail(email);
-    
+
     // Input Validation
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
@@ -886,12 +945,16 @@ async function startServer() {
       logActivity("Failed login attempt", 0, `Failed login attempt for email: ${email}`);
       return res.status(401).json({ error: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
     }
-    
-    if (user.role === 'dealer' && !user.is_verified) {
-      logActivity("Failed login attempt", user.id, `Unverified dealer login attempt: ${email}`);
-      return res.status(403).json({ error: "يرجى التحقق من بريدك الإلكتروني أولاً" });
+
+    if (!user.is_verified) {
+      logActivity("Failed login attempt", user.id, `Unverified login attempt: ${email}`);
+      return res.status(403).json({
+        error: "Please verify your email first.",
+        requiresOtpVerification: true,
+        email: user.email
+      });
     }
-    
+
     let dealerId = null;
     if (user.role === 'dealer') {
       const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(user.id) as any;
@@ -1433,7 +1496,6 @@ async function startServer() {
     const dealer = db.prepare("SELECT name, user_id FROM dealers WHERE id = ?").get(req.params.id) as any;
     if (dealer) {
       db.prepare("UPDATE dealers SET status = 'active' WHERE id = ?").run(req.params.id);
-      db.prepare("UPDATE users SET is_verified = 1 WHERE id = ?").run(dealer.user_id);
       logActivity("Admin approved dealer", req.user.id, `Admin approved dealer: ${dealer.name} (ID: ${req.params.id})`);
       createNotification(dealer.user_id, "approval", "تمت الموافقة على حساب المعرض الخاص بك بنجاح!");
       res.json({ success: true });

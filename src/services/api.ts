@@ -182,17 +182,54 @@ export const api = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
       });
-      if (!res.ok) throw new Error("Invalid credentials");
-      return res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err: any = new Error(data.error || "Invalid credentials");
+        err.requiresOtpVerification = data.requiresOtpVerification;
+        err.email = data.email;
+        throw err;
+      }
+      return data;
     },
-    register: async (data: any): Promise<AuthResponse> => {
+    register: async (data: any): Promise<{ success: boolean; email: string; requiresOtpVerification: boolean }> => {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Registration failed");
-      return res.json();
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Registration failed");
+      return body;
+    },
+    sendOtp: async (email: string, purpose: "register" | "forgot_password" | "change_email"): Promise<{ success: boolean; error?: string; cooldownSeconds?: number }> => {
+      const res = await fetch(`${API_BASE}/auth/send-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, purpose }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(data.error || "Failed to send verification code"), data);
+      return data;
+    },
+    resendOtp: async (email: string, purpose: "register" | "forgot_password" | "change_email"): Promise<{ success: boolean; error?: string; cooldownSeconds?: number }> => {
+      const res = await fetch(`${API_BASE}/auth/resend-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, purpose }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(data.error || "Failed to resend verification code"), data);
+      return data;
+    },
+    verifyOtp: async (email: string, otp: string, purpose: "register" | "forgot_password" | "change_email"): Promise<AuthResponse> => {
+      const res = await fetch(`${API_BASE}/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp, purpose }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Invalid verification code");
+      return data;
     },
     forgotPassword: async (email: string): Promise<{ success: boolean }> => {
       const res = await fetch(`${API_BASE}/auth/forgot-password`, {
@@ -203,7 +240,7 @@ export const api = {
       if (!res.ok) throw new Error("Failed to send reset email");
       return res.json();
     },
-    resetPassword: async (data: any): Promise<{ success: boolean }> => {
+    resetPassword: async (data: { email: string; otp: string; password: string }): Promise<{ success: boolean }> => {
       const res = await fetch(`${API_BASE}/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
