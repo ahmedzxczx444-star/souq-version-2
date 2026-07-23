@@ -15,7 +15,7 @@ import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import validator from "validator";
 import xss from "xss-clean";
-import { initOtpService, sendOtp, verifyOtp } from "./services/otpService";
+import { initOtpService, sendOtp, verifyOtp, clearExpiredOtps } from "./services/otpService";
 
 dotenv.config();
 
@@ -283,6 +283,7 @@ try {
 
 // OTP verification tables (registration, forgot-password, change-email)
 initOtpService(db);
+setInterval(clearExpiredOtps, 15 * 60 * 1000);
 
 // Seed Data if empty
 const dealerCount = db.prepare("SELECT COUNT(*) as count FROM dealers").get() as { count: number };
@@ -769,30 +770,66 @@ async function startServer() {
     const escapedName = validator.escape(name);
 
     try {
-      const result = db.prepare("INSERT INTO users (email, password, name, role, is_verified) VALUES (?, ?, ?, ?, 0)").run(
-        email,
-        hashedPassword,
-        escapedName,
-        role || 'user'
-      );
-      const userId = result.lastInsertRowid;
+      // A pending (unverified) registration for this email is not a conflict — refresh
+      // its details and resend the OTP instead of blocking the user with a dead-end error.
+      const existingUser = db.prepare("SELECT id, is_verified FROM users WHERE email = ?").get(email) as any;
+      if (existingUser && existingUser.is_verified) {
+        return res.status(400).json({ error: "Email already exists" });
+      }
+
+      let userId: number;
+      if (existingUser) {
+        userId = existingUser.id;
+        db.prepare("UPDATE users SET password = ?, name = ?, role = ? WHERE id = ?").run(
+          hashedPassword,
+          escapedName,
+          role || 'user',
+          userId
+        );
+      } else {
+        const result = db.prepare("INSERT INTO users (email, password, name, role, is_verified) VALUES (?, ?, ?, ?, 0)").run(
+          email,
+          hashedPassword,
+          escapedName,
+          role || 'user'
+        );
+        userId = result.lastInsertRowid as number;
+      }
 
       if (role === 'dealer') {
-        db.prepare(`
-          INSERT INTO dealers (user_id, name, logo, phone, whatsapp_number, branches_count, address, latitude, longitude, rating)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          userId,
-          escapedName,
-          logo || `https://picsum.photos/seed/${userId}/200`,
-          validator.escape(phone || ''),
-          validator.escape(whatsapp_number || ''),
-          branches_count || 1,
-          validator.escape(address || ''),
-          latitude || null,
-          longitude || null,
-          5.0
-        );
+        const existingDealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(userId) as any;
+        if (existingDealer) {
+          db.prepare(`
+            UPDATE dealers SET name = ?, logo = ?, phone = ?, whatsapp_number = ?, branches_count = ?, address = ?, latitude = ?, longitude = ?
+            WHERE id = ?
+          `).run(
+            escapedName,
+            logo || `https://picsum.photos/seed/${userId}/200`,
+            validator.escape(phone || ''),
+            validator.escape(whatsapp_number || ''),
+            branches_count || 1,
+            validator.escape(address || ''),
+            latitude || null,
+            longitude || null,
+            existingDealer.id
+          );
+        } else {
+          db.prepare(`
+            INSERT INTO dealers (user_id, name, logo, phone, whatsapp_number, branches_count, address, latitude, longitude, rating)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            userId,
+            escapedName,
+            logo || `https://picsum.photos/seed/${userId}/200`,
+            validator.escape(phone || ''),
+            validator.escape(whatsapp_number || ''),
+            branches_count || 1,
+            validator.escape(address || ''),
+            latitude || null,
+            longitude || null,
+            5.0
+          );
+        }
       }
 
       const otpResult = await sendOtp(email, "register", req.ip, escapedName);

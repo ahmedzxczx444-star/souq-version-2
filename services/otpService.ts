@@ -6,7 +6,7 @@ import { sendOtpEmail } from "./emailService";
 
 export type OtpPurpose = "register" | "forgot_password" | "change_email";
 
-const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_ATTEMPTS = 5;
 const RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds
 const MAX_SENDS_PER_HOUR = 5;

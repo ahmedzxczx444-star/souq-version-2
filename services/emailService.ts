@@ -10,7 +10,7 @@ export function buildOtpEmailHtml(otp: string): string {
       <div style="font-size: 32px; font-weight: 800; letter-spacing: 10px; text-align: center; background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 16px; padding: 20px; margin: 0 0 20px;">
         ${otp}
       </div>
-      <p style="font-size: 13px; line-height: 1.6; color: #6b7280; margin: 0 0 8px;">This code expires in 5 minutes.</p>
+      <p style="font-size: 13px; line-height: 1.6; color: #6b7280; margin: 0 0 8px;">This code expires in 10 minutes.</p>
       <p style="font-size: 13px; line-height: 1.6; color: #6b7280; margin: 0 0 24px;">If you did not create this account, please ignore this email.</p>
       <p style="font-size: 15px; line-height: 1.6; margin: 0;">Thank you,<br/>Souq Cars Team</p>
     </div>
