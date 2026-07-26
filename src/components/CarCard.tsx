@@ -1,6 +1,6 @@
 import React, { useState } from "react"; // UPDATED
 import { Car, User } from "../types"; // UPDATED
-import { Heart, MapPin, Calendar, Gauge, Share2, MessageCircle, ShieldCheck, Zap, Sparkles } from "lucide-react"; // UPDATED
+import { Heart, MapPin, Gauge, Share2, ShieldCheck, Zap, Sparkles } from "lucide-react"; // UPDATED
 import { motion } from "motion/react";
 import { api } from "../services/api";
 import { subscriptionsEnabled } from "../constants/config";
@@ -12,14 +12,13 @@ interface CarCardProps {
   isFavorite?: boolean;
   onFavoriteToggle?: (e: React.MouseEvent) => void;
   t: any;
-  variant?: "default" | "grid" | "feed";
+  variant?: "grid" | "feed";
   user?: User | null; // ADDED
 }
 
-export const CarCard: React.FC<CarCardProps> = ({ car, onClick, isFavorite, onFavoriteToggle, t, variant = "default", user }) => { // UPDATED
+export const CarCard: React.FC<CarCardProps> = ({ car, onClick, isFavorite, onFavoriteToggle, t, variant = "feed", user }) => { // UPDATED
   const [isPromoting, setIsPromoting] = useState(false); // ADDED
   const isGrid = variant === "grid";
-  const isFeed = variant === "feed";
 
   const isOwner = user?.id === car.dealer_user_id; // ADDED
   const isVerified = car.dealer_plan_type === 'plus' || car.dealer_plan_type === 'premium'; // ADDED
@@ -88,6 +87,8 @@ export const CarCard: React.FC<CarCardProps> = ({ car, onClick, isFavorite, onFa
             alt={`${car.make} ${car.model}`}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             referrerPolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
           />
           <div className="absolute top-1.5 ltr:left-1.5 rtl:right-1.5 flex flex-col gap-1 items-start">
             <div className="bg-[#1a4d3e] text-white text-[8px] font-black px-2 py-0.5 rounded-md shadow-md">
@@ -146,7 +147,7 @@ export const CarCard: React.FC<CarCardProps> = ({ car, onClick, isFavorite, onFa
             <div className="flex flex-col gap-1 text-[7px] text-gray-400 font-bold mt-1.5 pt-1.5 border-t border-gray-50">
             <div className="flex items-center gap-1">
               <MapPin size={8} className="text-[#1a4d3e]" />
-              <span className="truncate font-arabic">{car.location || car.dealer_location || "Cairo"}</span>
+              <span className="truncate font-arabic">{car.location || car.dealer_location || "القاهرة"}</span>
             </div>
             <div className="flex items-center gap-1">
               <Gauge size={8} className="text-[#1a4d3e]" />
@@ -166,8 +167,7 @@ export const CarCard: React.FC<CarCardProps> = ({ car, onClick, isFavorite, onFa
     );
   }
 
-  if (isFeed) {
-    return (
+  return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -181,7 +181,7 @@ export const CarCard: React.FC<CarCardProps> = ({ car, onClick, isFavorite, onFa
               <div className="w-full h-full rounded-full bg-white p-[1px]">
                 <div className="w-full h-full rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-[10px] font-black text-gray-500">
                   {car.dealer_logo ? (
-                    <img src={car.dealer_logo} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <img src={car.dealer_logo} className="w-full h-full object-cover" referrerPolicy="no-referrer" loading="lazy" decoding="async" />
                   ) : (
                     car.make[0]
                   )}
@@ -220,6 +220,8 @@ export const CarCard: React.FC<CarCardProps> = ({ car, onClick, isFavorite, onFa
             alt={car.make}
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
           />
           <div className={`absolute top-3 ltr:left-3 rtl:right-3 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg ${
             car.status === 'sold' ? 'bg-rose-500' : 
@@ -296,85 +298,6 @@ export const CarCard: React.FC<CarCardProps> = ({ car, onClick, isFavorite, onFa
           </div>
         </div>
       </motion.div>
-    );
-  }
-
-  // Immersive Reel View
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="relative w-full h-screen snap-start snap-always overflow-hidden bg-black"
-    >
-      {/* Background Image/Video */}
-      <img
-        src={car.images[0]}
-        alt={car.make}
-        className="w-full h-full object-cover opacity-80"
-        referrerPolicy="no-referrer"
-      />
-      
-      {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/90" />
-
-      {/* Right Side Actions */}
-      <div className="absolute right-4 bottom-32 flex flex-col gap-6 items-center z-20">
-        <button 
-          onClick={onFavoriteToggle}
-          className="flex flex-col items-center gap-1 group"
-        >
-          <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 group-hover:bg-white/20 transition-all">
-            <Heart size={24} className={isFavorite ? "fill-red-500 text-red-500" : "text-white"} />
-          </div>
-          <span className="text-[10px] font-bold text-white shadow-sm">1.2k</span>
-        </button>
-        
-        <button onClick={handleShare} className="flex flex-col items-center gap-1 group">
-          <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 group-hover:bg-white/20 transition-all">
-            <Share2 size={24} className="text-white" />
-          </div>
-          <span className="text-[10px] font-bold text-white shadow-sm">Share</span>
-        </button>
-      </div>
-
-      {/* Bottom Info Overlay */}
-      <div className="absolute bottom-0 left-0 right-0 p-8 pt-20 bg-gradient-to-t from-black via-black/40 to-transparent z-10">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center font-black text-xs text-white shadow-lg shadow-emerald-500/20">
-            SJ
-          </div>
-          <div>
-            <h4 className="text-sm font-black text-white font-arabic">معرض الجردي</h4>
-            <p className="text-[10px] text-emerald-400 font-bold font-arabic">مصر حصري • متصل الآن</p>
-          </div>
-        </div>
-
-        <h2 className="text-2xl font-black text-white mb-2 font-arabic tracking-tight">
-          {car.make} {car.model} {car.year}
-        </h2>
-        
-        <div className="flex gap-4 mb-6">
-          <div className="flex items-center gap-1.5 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
-            <Gauge size={14} className="text-emerald-400" />
-            <span className="text-xs font-bold text-white/80">{car.mileage.toLocaleString()} كم</span>
-          </div>
-          <div className="flex items-center gap-1.5 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
-            <Calendar size={14} className="text-emerald-400" />
-            <span className="text-xs font-bold text-white/80">{car.year}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider mb-1">السعر</span>
-            <span className="text-2xl font-black text-emerald-400">{car.price.toLocaleString()} ج.م</span>
-          </div>
-          <button className="bg-emerald-500 text-white px-8 py-3 rounded-2xl font-black text-sm shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 transition-colors">
-            تواصل الآن
-          </button>
-        </div>
-      </div>
-    </motion.div>
   );
 };
 

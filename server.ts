@@ -15,7 +15,8 @@ import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import validator from "validator";
 import xss from "xss-clean";
-import { initOtpService, sendOtp, verifyOtp, clearExpiredOtps } from "./services/otpService";
+import { GoogleGenAI, Type } from "@google/genai";
+import { searchCars } from "./searchEngine";
 
 dotenv.config();
 
@@ -281,10 +282,6 @@ try {
   db.exec("ALTER TABLE reels ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP");
 } catch (e) {}
 
-// OTP verification tables (registration, forgot-password, change-email)
-initOtpService(db);
-setInterval(clearExpiredOtps, 15 * 60 * 1000);
-
 // Seed Data if empty
 const dealerCount = db.prepare("SELECT COUNT(*) as count FROM dealers").get() as { count: number };
 const carCount = db.prepare("SELECT COUNT(*) as count FROM cars").get() as { count: number };
@@ -302,37 +299,39 @@ if (dealerCount.count === 0 || carCount.count === 0) {
   }
 
   const insertUser = db.prepare("INSERT INTO users (email, password, name, role, is_verified) VALUES (?, ?, ?, ?, 1)");
-  
+
   // Check if admin exists
   const adminExists = db.prepare("SELECT id FROM users WHERE email = ?").get("admin@automarket.com");
   if (!adminExists) {
-    insertUser.run("admin@automarket.com", bcrypt.hashSync("admin123", 10), "Super Admin", "super_admin");
+    insertUser.run("admin@automarket.com", bcrypt.hashSync("admin123", 10), "مدير النظام", "super_admin");
   }
-  
-  const dealer1User = insertUser.run("dealer1@example.com", bcrypt.hashSync("password", 10), "Elite Motors", "dealer").lastInsertRowid;
-  const dealer2User = insertUser.run("dealer2@example.com", bcrypt.hashSync("password", 10), "Speedway Autos", "dealer").lastInsertRowid;
-  const dealer3User = insertUser.run("dealer3@example.com", bcrypt.hashSync("password", 10), "Royal Chariots", "dealer").lastInsertRowid;
-  const dealer4User = insertUser.run("dealer4@example.com", bcrypt.hashSync("password", 10), "City Drive", "dealer").lastInsertRowid;
 
-  const insertDealer = db.prepare("INSERT INTO dealers (user_id, name, logo, description, location, phone, rating, branches_count, reviews_count, is_luxury, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-  const d1 = insertDealer.run(dealer1User, "Elite Motors", "https://picsum.photos/seed/dealer1/200", "Luxury car specialists with over 20 years of experience.", "London, UK", "+44 20 7123 4567", 4.8, 3, 150, 1, 'active').lastInsertRowid;
-  const d2 = insertDealer.run(dealer2User, "Speedway Autos", "https://picsum.photos/seed/dealer2/200", "We focus on performance and sports cars.", "Manchester, UK", "+44 161 987 6543", 4.5, 2, 85, 0, 'active').lastInsertRowid;
-  const d3 = insertDealer.run(dealer3User, "Royal Chariots", "https://picsum.photos/seed/dealer3/200", "The finest luxury vehicles in the kingdom.", "London, UK", "+44 20 8888 9999", 4.9, 5, 320, 1, 'active').lastInsertRowid;
-  const d4 = insertDealer.run(dealer4User, "City Drive", "https://picsum.photos/seed/dealer4/200", "Affordable city cars for everyone.", "Birmingham, UK", "+44 121 555 0000", 4.2, 8, 450, 0, 'active').lastInsertRowid;
+  const dealer1User = insertUser.run("info@unitedmotors-eg.com", bcrypt.hashSync("password", 10), "المتحدة للسيارات", "dealer").lastInsertRowid;
+  const dealer2User = insertUser.run("sales@alnasrauto-eg.com", bcrypt.hashSync("password", 10), "مركز النصر للسيارات", "dealer").lastInsertRowid;
+  const dealer3User = insertUser.run("contact@rotanamotors-eg.com", bcrypt.hashSync("password", 10), "روتانا موتورز الفاخرة", "dealer").lastInsertRowid;
+  const dealer4User = insertUser.run("info@alexandria-auto-eg.com", bcrypt.hashSync("password", 10), "الإسكندرية أوتو", "dealer").lastInsertRowid;
+
+  const insertDealer = db.prepare("INSERT INTO dealers (user_id, name, logo, description, location, phone, whatsapp_number, rating, branches_count, reviews_count, is_luxury, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+  const d1 = insertDealer.run(dealer1User, "المتحدة للسيارات", "https://api.dicebear.com/7.x/initials/svg?seed=United%20Motors&backgroundColor=065f46", "معرض متخصص في السيارات الأوروبية والاقتصادية بخبرة تمتد لأكثر من 10 سنوات في السوق المصري.", "التجمع الخامس، القاهرة الجديدة", "+20 100 123 4567", "+20 100 123 4567", 4.6, 2, 0, 0, 'active').lastInsertRowid;
+  const d2 = insertDealer.run(dealer2User, "مركز النصر للسيارات", "https://api.dicebear.com/7.x/initials/svg?seed=Al%20Nasr%20Auto&backgroundColor=1a4d3e", "معرض سيارات مستعملة وجديدة بأسعار تنافسية وضمان على كل سياراتنا.", "مدينة نصر، القاهرة", "+20 101 234 5678", "+20 101 234 5678", 4.4, 1, 0, 0, 'active').lastInsertRowid;
+  const d3 = insertDealer.run(dealer3User, "روتانا موتورز الفاخرة", "https://api.dicebear.com/7.x/initials/svg?seed=Rotana%20Motors&backgroundColor=92400e", "معرض متخصص في السيارات الفاخرة والنادرة لعملائنا المميزين.", "الشيخ زايد، الجيزة", "+20 122 345 6789", "+20 122 345 6789", 4.9, 3, 0, 1, 'active').lastInsertRowid;
+  const d4 = insertDealer.run(dealer4User, "الإسكندرية أوتو", "https://api.dicebear.com/7.x/initials/svg?seed=Alexandria%20Auto&backgroundColor=1e3a8a", "معرض سيارات موثوق يخدم عملاء الإسكندرية والمناطق المجاورة منذ عام 2015.", "سموحة، الإسكندرية", "+20 111 456 7890", "+20 111 456 7890", 4.3, 1, 0, 0, 'active').lastInsertRowid;
 
   const insertCar = db.prepare("INSERT INTO cars (dealer_id, make, model, year, price, mileage, location, fuel_type, transmission, description, images, featured) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-  insertCar.run(d1, "Porsche", "911 Carrera", 2023, 125000, 1200, "London, UK", "Petrol", "Automatic", "Stunning 911 in Gentian Blue. Full leather interior, sports exhaust, and premium sound system.", JSON.stringify(["https://picsum.photos/seed/car1/800/600", "https://picsum.photos/seed/car1b/800/600"]), 1);
-  insertCar.run(d1, "BMW", "M4 Competition", 2022, 78000, 5000, "London, UK", "Petrol", "Automatic", "Isle of Man Green with Kyalami Orange interior. Carbon fiber package.", JSON.stringify(["https://picsum.photos/seed/car2/800/600", "https://picsum.photos/seed/car2b/800/600"]), 0);
-  insertCar.run(d2, "Audi", "RS6 Avant", 2021, 95000, 15000, "Manchester, UK", "Petrol", "Automatic", "The ultimate family wagon. Nardo Grey, black optics, 22-inch wheels.", JSON.stringify(["https://picsum.photos/seed/car3/800/600", "https://picsum.photos/seed/car3b/800/600"]), 1);
-  insertCar.run(d2, "Tesla", "Model 3 Performance", 2023, 52000, 500, "Manchester, UK", "Electric", "Automatic", "Brand new Model 3. Full Self-Driving capability included.", JSON.stringify(["https://picsum.photos/seed/car4/800/600"]), 0);
-  insertCar.run(d3, "Rolls-Royce", "Ghost", 2023, 350000, 100, "London, UK", "Petrol", "Automatic", "The pinnacle of luxury. Extended wheelbase, starlight headliner.", JSON.stringify(["https://picsum.photos/seed/car5/800/600"]), 0);
-  insertCar.run(d3, "Bentley", "Continental GT", 2022, 210000, 2000, "London, UK", "Petrol", "Automatic", "Mulliner specification, rotating display, diamond-in-diamond quilting.", JSON.stringify(["https://picsum.photos/seed/car6/800/600"]), 0);
-  insertCar.run(d4, "Volkswagen", "Golf R", 2023, 45000, 1000, "Birmingham, UK", "Petrol", "Automatic", "Lapiz Blue, performance pack, akrapovic exhaust.", JSON.stringify(["https://picsum.photos/seed/car7/800/600"]), 0);
-  insertCar.run(d4, "Ford", "Fiesta ST", 2022, 22000, 8000, "Birmingham, UK", "Petrol", "Manual", "Performance Green, recaro seats, limited slip differential.", JSON.stringify(["https://picsum.photos/seed/car8/800/600"]), 0);
+  insertCar.run(d1, "BMW", "320i", 2022, 2450000, 18000, "التجمع الخامس، القاهرة الجديدة", "بنزين", "Automatic", "بي إم دبليو 320i موديل 2022 باللون الأسود، فبريكا بالكامل، صيانة توكيل، اقتصادية في استهلاك الوقود وأداء رياضي ممتاز.", JSON.stringify(["https://images.unsplash.com/photo-1580273916550-e323be2ae537?q=80&w=1200&auto=format&fit=crop", "https://images.unsplash.com/photo-1600268330186-76564be81357?q=80&w=1200&auto=format&fit=crop"]), 0);
+  insertCar.run(d1, "Kia", "Sportage", 2017, 970000, 85000, "السادس من أكتوبر، الجيزة", "بنزين", "Automatic", "كيا سبورتاج 2017 دفع رباعي، اللون فضي، حالة ممتازة، مناسبة للعائلات والاستخدام اليومي، فحص كامل متاح.", JSON.stringify(["https://images.unsplash.com/photo-1688893288248-3338b8491a46?q=80&w=1200&auto=format&fit=crop", "https://images.unsplash.com/photo-1688893287874-ac7fbd686c24?q=80&w=1200&auto=format&fit=crop"]), 0);
+  insertCar.run(d2, "Mercedes-Benz", "C200", 2021, 2850000, 32000, "مدينة نصر، القاهرة", "بنزين", "Automatic", "مرسيدس C200 موديل 2021 باللون الأبيض اللؤلؤي، فل كامل، إطارات جديدة، صيانة دورية بالوكيل.", JSON.stringify(["https://images.unsplash.com/photo-1714873383875-58cb3fa5f5e1?q=80&w=1200&auto=format&fit=crop", "https://images.unsplash.com/photo-1584936684506-c3a7086e8212?q=80&w=1200&auto=format&fit=crop"]), 0);
+  insertCar.run(d2, "Toyota", "Corolla", 2020, 780000, 45000, "مدينة نصر، القاهرة", "بنزين", "Automatic", "تويوتا كورولا 2020 اللون فضي، اقتصادية وموفرة للوقود، صيانة دورية منتظمة، جاهزة للمعاينة في القاهرة.", JSON.stringify(["https://images.unsplash.com/photo-1638618164682-12b986ec2a75?q=80&w=1200&auto=format&fit=crop", "https://images.unsplash.com/photo-1626072557464-90403d788e8d?q=80&w=1200&auto=format&fit=crop"]), 0);
+  insertCar.run(d2, "Hyundai", "Elantra", 2022, 850000, 21000, "مدينة نصر، القاهرة", "بنزين", "Automatic", "هيونداي إلنترا 2022 اللون أبيض، سيارة عائلية مريحة وواسعة، حساسات خلفية وشاشة تعمل باللمس.", JSON.stringify(["https://images.unsplash.com/photo-1643142314913-0cf633d9bbb5?q=80&w=1200&auto=format&fit=crop", "https://images.unsplash.com/photo-1777175013302-eaf4b3ef785a?q=80&w=1200&auto=format&fit=crop"]), 0);
+  insertCar.run(d3, "Rolls-Royce", "Ghost", 2023, 24500000, 3000, "الشيخ زايد، الجيزة", "بنزين", "Automatic", "رولز رويس غوست 2023 اللون أسود، فبريكا بالكامل، سقف نجوم، تصميم فاخر استثنائي.", JSON.stringify(["https://images.unsplash.com/photo-1624804269473-828dcc30a210?q=80&w=1200&auto=format&fit=crop", "https://images.unsplash.com/photo-1696233016084-30c8345d85ff?q=80&w=1200&auto=format&fit=crop"]), 0);
+  insertCar.run(d3, "Bentley", "Continental GT", 2022, 18200000, 8000, "الشيخ زايد، الجيزة", "بنزين", "Automatic", "بنتلي كونتيننتال جي تي 2022 اللون رمادي، فرش مولينر الجلدي الفاخر، أداء رياضي بمواصفات فائقة الفخامة.", JSON.stringify(["https://images.unsplash.com/photo-1609679605571-4323e084c314?q=80&w=1200&auto=format&fit=crop", "https://images.unsplash.com/photo-1471289549423-04adaecfa1f1?q=80&w=1200&auto=format&fit=crop"]), 0);
+  insertCar.run(d4, "Audi", "A6", 2019, 1950000, 60000, "سموحة، الإسكندرية", "بنزين", "Automatic", "أودي A6 موديل 2019 اللون رصاصي، فبريكا، فرش جلد، صيانة بالوكيل، تصميم أنيق وأداء قوي.", JSON.stringify(["https://images.unsplash.com/photo-1561924563-d9ad0f32b23f?q=80&w=1200&auto=format&fit=crop", "https://images.unsplash.com/photo-1615715070496-d85daab3618d?q=80&w=1200&auto=format&fit=crop"]), 0);
+  insertCar.run(d4, "Chevrolet", "Optra", 2016, 320000, 110000, "سموحة، الإسكندرية", "بنزين", "Manual", "شيفروليه أوبترا 2016 اللون فضي، قير عادي (مانيوال)، اقتصادية جدًا ومناسبة للاستخدام اليومي.", JSON.stringify(["https://images.unsplash.com/photo-1604945417112-07c84e9a21fa?q=80&w=1200&auto=format&fit=crop", "https://images.unsplash.com/photo-1673769615853-59ecd9965fad?q=80&w=1200&auto=format&fit=crop"]), 0);
+  insertCar.run(d4, "MG", "ZS", 2023, 890000, 5000, "سموحة، الإسكندرية", "بنزين", "Automatic", "إم جي ZS موديل 2023 اللون أبيض، SUV مدمجة، كاميرا خلفية وشاشة لمس، ضمان ساري من الوكيل.", JSON.stringify(["https://images.unsplash.com/photo-1615887110697-0819ec23465f?q=80&w=1200&auto=format&fit=crop", "https://images.unsplash.com/photo-1642345810417-eecf7dda339b?q=80&w=1200&auto=format&fit=crop"]), 0);
 
   const insertReel = db.prepare("INSERT INTO reels (dealer_id, car_id, video_url, caption) VALUES (?, ?, ?, ?)");
-  insertReel.run(d1, 1, "https://assets.mixkit.co/videos/preview/mixkit-fast-car-driving-on-a-highway-at-night-34505-large.mp4", "The roar of the flat-six! 🏎️");
-  insertReel.run(d2, 3, "https://assets.mixkit.co/videos/preview/mixkit-white-car-driving-on-a-winding-road-in-the-mountains-34504-large.mp4", "RS6 in its natural habitat. 🏔️");
+  insertReel.run(d1, 1, "https://assets.mixkit.co/videos/preview/mixkit-fast-car-driving-on-a-highway-at-night-34505-large.mp4", "بي إم دبليو 320i جاهزة للمعاينة 🚗");
+  insertReel.run(d3, 6, "https://assets.mixkit.co/videos/preview/mixkit-white-car-driving-on-a-winding-road-in-the-mountains-34504-large.mp4", "رولز رويس غوست في أبهى صورها 🏎️");
 } else {
   // Repair: Ensure all dealers are active if they were stuck in pending
   db.prepare("UPDATE dealers SET status = 'active' WHERE status = 'pending'").run();
@@ -345,6 +344,9 @@ async function startServer() {
   const wss = new WebSocketServer({ server });
   const PORT = Number(process.env.PORT) || 3000;
   const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key";
+
+  // Gemini client stays server-side only - never expose GEMINI_API_KEY to the browser.
+  const genAI = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
   console.log(`Configuring server on port ${PORT}...`);
 
@@ -498,36 +500,36 @@ async function startServer() {
     next();
   };
 
-  // API Routes
-  app.get("/api/cars", (req, res) => {
+  // Shared helper: fetch all active-dealer cars with images parsed (used by /api/cars and /api/search)
+  const getActiveCars = (): any[] => {
     const cars = db.prepare(`
-      SELECT 
-        cars.*, 
-        dealers.name as dealer_name, 
-        dealers.logo as dealer_logo, 
-        dealers.location as dealer_location, 
+      SELECT
+        cars.*,
+        dealers.name as dealer_name,
+        dealers.logo as dealer_logo,
+        dealers.location as dealer_location,
         dealers.user_id as dealer_user_id,
         COALESCE(users.plan, 'free') as user_plan,
         (SELECT COUNT(*) FROM favorites WHERE car_id = cars.id) as favorites_count
-      FROM cars 
+      FROM cars
       JOIN dealers ON cars.dealer_id = dealers.id
       LEFT JOIN users ON dealers.user_id = users.id
       WHERE dealers.status = 'active'
-      ORDER BY 
+      ORDER BY
         (CASE WHEN ? THEN cars.is_promoted ELSE 0 END) DESC,
-        (CASE WHEN ? THEN 
-          CASE COALESCE(users.plan, 'free') 
-            WHEN 'premium' THEN 3 
-            WHEN 'plus' THEN 2 
-            WHEN 'pro' THEN 1 
-            ELSE 0 
-          END 
+        (CASE WHEN ? THEN
+          CASE COALESCE(users.plan, 'free')
+            WHEN 'premium' THEN 3
+            WHEN 'plus' THEN 2
+            WHEN 'pro' THEN 1
+            ELSE 0
+          END
         ELSE 0 END) DESC,
-        cars.featured DESC, 
-        cars.createdAt DESC, 
+        cars.featured DESC,
+        cars.createdAt DESC,
         cars.views DESC
     `).all(SUBSCRIPTION_SYSTEM_ENABLED ? 1 : 0, SUBSCRIPTION_SYSTEM_ENABLED ? 1 : 0);
-    res.json(cars.map((c: any) => {
+    return cars.map((c: any) => {
       let images = [];
       try {
         images = c.images ? JSON.parse(c.images) : [];
@@ -535,7 +537,12 @@ async function startServer() {
         console.error("Failed to parse images for car", c.id);
       }
       return { ...c, images, featured: !!c.featured };
-    }));
+    });
+  };
+
+  // API Routes
+  app.get("/api/cars", (req, res) => {
+    res.json(getActiveCars());
   });
 
   app.get("/api/cars/:id", (req, res) => {
@@ -560,6 +567,101 @@ async function startServer() {
       console.error("Failed to parse images for car", car.id);
     }
     res.json({ ...car, images, featured: !!car.featured });
+  });
+
+  // Arabic-aware search: typo tolerant, understands price/city/transmission/fuel/body-type
+  // phrases, ranks results, and falls back to relaxed/suggested results instead of nothing.
+  app.get("/api/search", (req, res) => {
+    const q = typeof req.query.q === "string" ? req.query.q : "";
+    const cars = getActiveCars();
+    const outcome = searchCars(cars, q);
+    res.json({
+      results: outcome.cars,
+      count: outcome.cars.length,
+      noExactMatch: outcome.noExactMatch,
+      emptyQuery: outcome.emptyQuery,
+      parsed: outcome.parsed,
+    });
+  });
+
+  // Deterministic (no-LLM) reply used whenever Gemini is unavailable or fails,
+  // so AI Search stays usable even without GEMINI_API_KEY configured in production.
+  const buildDeterministicReply = (outcome: ReturnType<typeof searchCars>) => {
+    if (outcome.emptyQuery) {
+      return "اسألني عن أي سيارة، مثلاً: \"كيا سبورتاج\"، \"BMW موديل 2022\" أو \"عربية أوتوماتيك أقل من مليون جنيه\".";
+    }
+    if (outcome.cars.length === 0) {
+      return "للأسف مفيش سيارات متاحة دلوقتي تطابق طلبك. جرّب تغيّر الميزانية أو الموديل، أو تصفح أحدث السيارات المعروضة.";
+    }
+    if (outcome.noExactMatch) {
+      return `مفيش نتيجة مطابقة تمامًا لطلبك، بس دي أقرب ${Math.min(outcome.cars.length, 6)} سيارات ممكن تعجبك:`;
+    }
+    return `لقيت لك ${outcome.cars.length} سيارة تناسب طلبك:`;
+  };
+
+  app.post("/api/ai-search/chat", async (req, res) => {
+    const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    if (!message) return res.status(400).json({ error: "الرسالة مطلوبة" });
+
+    const allCars = getActiveCars();
+    const outcome = searchCars(allCars, message);
+    const candidates = outcome.cars.slice(0, 15);
+
+    // Deterministic fallback path (no API key configured, or model call fails)
+    const fallback = () => {
+      const cars = candidates.slice(0, 6);
+      res.json({ text: buildDeterministicReply(outcome), cars });
+    };
+
+    if (!genAI) return fallback();
+
+    try {
+      const carContext = candidates.map((c: any) => ({
+        id: c.id, make: c.make, model: c.model, year: c.year, price: c.price,
+        mileage: c.mileage, location: c.location, fuel_type: c.fuel_type,
+        transmission: c.transmission, status: c.status,
+      }));
+
+      const response = await genAI.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{
+          role: "user",
+          parts: [{ text: `
+            انت مساعد ذكي لسوق سيارات مصري اسمه "سوق السيارات". مهمتك مساعدة المستخدمين في العثور على سيارة مناسبة بالعربية.
+
+            السيارات المرشحة (تم ترشيحها مسبقًا حسب طلب المستخدم من قاعدة البيانات الفعلية): ${JSON.stringify(carContext)}
+            طلب المستخدم: "${message}"
+
+            التعليمات:
+            1. رد باللهجة المصرية أو العربية الفصحى البسيطة، بشكل ودود ومختصر.
+            2. اذكر فقط سيارات موجودة فعلاً في القائمة المرشحة أعلاه، ولا تخترع سيارات غير موجودة.
+            3. لو مفيش سيارات مرشحة أصلاً، قل ذلك بوضوح واقترح تعديل الطلب (ميزانية أو موديل مختلف).
+            4. رجّع الرد بصيغة JSON بحقلين فقط: "text" (ردك النصي) و"matchedCarIds" (مصفوفة IDs من القائمة المرشحة فقط).
+          ` }],
+        }],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              text: { type: Type.STRING },
+              matchedCarIds: { type: Type.ARRAY, items: { type: Type.INTEGER } },
+            },
+            required: ["text", "matchedCarIds"],
+          },
+        },
+      });
+
+      const parsed = JSON.parse(response.text as string);
+      const candidateIds = new Set(candidates.map((c: any) => c.id));
+      const matchedCars = candidates.filter((c: any) =>
+        Array.isArray(parsed.matchedCarIds) && parsed.matchedCarIds.includes(c.id) && candidateIds.has(c.id)
+      );
+      res.json({ text: parsed.text, cars: matchedCars.length > 0 ? matchedCars : candidates.slice(0, 6) });
+    } catch (e) {
+      console.error("AI search chat error, falling back to deterministic search:", e);
+      fallback();
+    }
   });
 
   app.get("/api/dealers", (req, res) => {
@@ -747,9 +849,8 @@ async function startServer() {
 
   // Auth Routes
   app.post("/api/auth/register", authLimiter, async (req, res) => {
-    let { email, password, name, role, phone, whatsapp_number, branches_count, address, latitude, longitude, logo, captchaToken } = req.body;
-    email = validator.normalizeEmail(email);
-
+    const { email, password, name, role, phone, whatsapp_number, branches_count, address, latitude, longitude, logo, captchaToken } = req.body;
+    
     // Input Validation
     if (!email || !password || !name) {
       return res.status(400).json({ error: "All required fields must be filled" });
@@ -767,80 +868,45 @@ async function startServer() {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const escapedName = validator.escape(name);
+    const verificationToken = jwt.sign({ email }, JWT_SECRET, { expiresIn: '24h' });
 
     try {
-      // A pending (unverified) registration for this email is not a conflict — refresh
-      // its details and resend the OTP instead of blocking the user with a dead-end error.
-      const existingUser = db.prepare("SELECT id, is_verified FROM users WHERE email = ?").get(email) as any;
-      if (existingUser && existingUser.is_verified) {
-        return res.status(400).json({ error: "Email already exists" });
-      }
-
-      let userId: number;
-      if (existingUser) {
-        userId = existingUser.id;
-        db.prepare("UPDATE users SET password = ?, name = ?, role = ? WHERE id = ?").run(
-          hashedPassword,
-          escapedName,
-          role || 'user',
-          userId
-        );
-      } else {
-        const result = db.prepare("INSERT INTO users (email, password, name, role, is_verified) VALUES (?, ?, ?, ?, 0)").run(
-          email,
-          hashedPassword,
-          escapedName,
-          role || 'user'
-        );
-        userId = result.lastInsertRowid as number;
-      }
+      const result = db.prepare("INSERT INTO users (email, password, name, role, verification_token, is_verified) VALUES (?, ?, ?, ?, ?, ?)").run(
+        validator.normalizeEmail(email),
+        hashedPassword,
+        name,
+        role || 'user',
+        verificationToken,
+        role === 'dealer' ? 0 : 1 // Auto-verify normal users for now, dealers must verify
+      );
+      const userId = result.lastInsertRowid;
 
       if (role === 'dealer') {
-        const existingDealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(userId) as any;
-        if (existingDealer) {
-          db.prepare(`
-            UPDATE dealers SET name = ?, logo = ?, phone = ?, whatsapp_number = ?, branches_count = ?, address = ?, latitude = ?, longitude = ?
-            WHERE id = ?
-          `).run(
-            escapedName,
-            logo || `https://picsum.photos/seed/${userId}/200`,
-            validator.escape(phone || ''),
-            validator.escape(whatsapp_number || ''),
-            branches_count || 1,
-            validator.escape(address || ''),
-            latitude || null,
-            longitude || null,
-            existingDealer.id
-          );
-        } else {
-          db.prepare(`
-            INSERT INTO dealers (user_id, name, logo, phone, whatsapp_number, branches_count, address, latitude, longitude, rating)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(
-            userId,
-            escapedName,
-            logo || `https://picsum.photos/seed/${userId}/200`,
-            validator.escape(phone || ''),
-            validator.escape(whatsapp_number || ''),
-            branches_count || 1,
-            validator.escape(address || ''),
-            latitude || null,
-            longitude || null,
-            5.0
-          );
-        }
+        db.prepare(`
+          INSERT INTO dealers (user_id, name, logo, phone, whatsapp_number, branches_count, address, latitude, longitude, rating)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          userId,
+          name,
+          logo || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
+          phone || '',
+          whatsapp_number || '',
+          branches_count || 1,
+          address || '',
+          latitude || null,
+          longitude || null,
+          5.0
+        );
+
+        console.log(`[EMAIL SIMULATION] Verification email sent to ${email}. Token: ${verificationToken}`);
+        console.log(`[VERIFY LINK] http://localhost:3000/api/auth/verify/${verificationToken}`);
       }
 
-      const otpResult = await sendOtp(email, "register", req.ip, escapedName);
-      if (!otpResult.success) {
-        return res.status(429).json({ error: otpResult.error });
-      }
-
-      res.json({
-        success: true,
-        email,
-        requiresOtpVerification: true
+      const token = jwt.sign({ id: userId, email, name, role: role || 'user' }, JWT_SECRET, { expiresIn: '1h' });
+      res.json({ 
+        token, 
+        user: { id: userId, email, name, role: role || 'user' },
+        requiresVerification: role === 'dealer'
       });
     } catch (e) {
       console.error("Registration error:", e);
@@ -848,125 +914,68 @@ async function startServer() {
     }
   });
 
-  // Send/resend an OTP for registration, forgot-password, or change-email.
-  // Resend uses the exact same underlying logic — there is only one send path.
-  const handleSendOtp = async (req: any, res: any) => {
-    let { email, purpose } = req.body;
-    email = validator.normalizeEmail(email);
-    const allowedPurposes = ["register", "forgot_password", "change_email"];
-
-    if (!email || !validator.isEmail(email)) {
-      return res.status(400).json({ error: "Valid email is required" });
-    }
-    if (!allowedPurposes.includes(purpose)) {
-      return res.status(400).json({ error: "Invalid purpose" });
-    }
-
-    const user = db.prepare("SELECT id, name, is_verified FROM users WHERE email = ?").get(email) as any;
-
-    if (purpose === "forgot_password" && !user) {
-      return res.json({ success: true }); // Don't reveal if the account exists
-    }
-    if (purpose === "register" && user?.is_verified) {
-      return res.status(400).json({ error: "Email already verified" });
-    }
-
-    const result = await sendOtp(email, purpose, req.ip, user?.name);
-    if (!result.success) {
-      return res.status(429).json(result);
-    }
-    res.json({ success: true });
-  };
-
-  app.post("/api/auth/send-otp", authLimiter, handleSendOtp);
-  app.post("/api/auth/resend-otp", authLimiter, handleSendOtp);
-
-  app.post("/api/auth/verify-otp", authLimiter, async (req: any, res) => {
-    let { email, otp, purpose } = req.body;
-    email = validator.normalizeEmail(email);
-
-    if (!email || !otp || !purpose) {
-      return res.status(400).json({ error: "Email, code, and purpose are required" });
-    }
-
-    const result = await verifyOtp(email, purpose, String(otp));
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    if (purpose === "register") {
-      const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email) as any;
-      if (!user) {
-        return res.status(404).json({ error: "Account not found" });
-      }
-      db.prepare("UPDATE users SET is_verified = 1 WHERE id = ?").run(user.id);
-
-      let dealerId = null;
-      if (user.role === 'dealer') {
-        const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(user.id) as any;
-        dealerId = dealer?.id;
+  app.get("/api/auth/verify/:token", (req, res) => {
+    const { token } = req.params;
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const result = db.prepare("UPDATE users SET is_verified = 1, verification_token = NULL WHERE verification_token = ?").run(token);
+      
+      if (result.changes === 0) {
+        return res.send("<h1>رابط التحقق غير صالح أو منتهي الصلاحية</h1>");
       }
 
-      logActivity("Email verified", user.id, `User ${user.id} verified their email via OTP`);
-      const token = jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role, dealerId }, JWT_SECRET, { expiresIn: '1h' });
-      return res.json({
-        success: true,
-        token,
-        user: { id: user.id, email: user.email, name: user.name, role: user.role, dealerId }
-      });
+      res.send(`
+        <div style="text-align: center; padding: 50px; font-family: sans-serif;">
+          <h1 style="color: #10b981;">تم التحقق من البريد الإلكتروني بنجاح!</h1>
+          <p>يمكنك الآن تسجيل الدخول إلى حسابك.</p>
+          <a href="/" style="display: inline-block; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 12px; margin-top: 20px;">العودة للتطبيق</a>
+        </div>
+      `);
+    } catch (e) {
+      res.send("<h1>رابط التحقق غير صالح أو منتهي الصلاحية</h1>");
     }
-
-    res.json({ success: true });
   });
 
   app.post("/api/auth/forgot-password", authLimiter, async (req, res) => {
-    let { email } = req.body;
-    email = validator.normalizeEmail(email);
-    const user = db.prepare("SELECT id, name FROM users WHERE email = ?").get(email) as any;
-
+    const { email } = req.body;
+    const user = db.prepare("SELECT id FROM users WHERE email = ?").get(email) as any;
+    
     if (!user) {
       return res.json({ success: true }); // Don't reveal if user exists
     }
 
-    const result = await sendOtp(email, "forgot_password", req.ip, user.name);
-    if (!result.success) {
-      return res.status(429).json(result);
-    }
+    const resetToken = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '1h' });
+    const expires = new Date(Date.now() + 3600000).toISOString();
 
+    db.prepare("UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?").run(resetToken, expires, user.id);
+
+    console.log(`[EMAIL SIMULATION] Password reset email sent to ${email}. Token: ${resetToken}`);
+    
     res.json({ success: true });
   });
 
-  app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
-    let { email, otp, password } = req.body;
-    email = validator.normalizeEmail(email);
+  app.post("/api/auth/reset-password", async (req, res) => {
+    const { token, password } = req.body;
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const user = db.prepare("SELECT * FROM users WHERE id = ? AND reset_token = ?").get(decoded.id, token) as any;
 
-    if (!email || !otp || !password) {
-      return res.status(400).json({ error: "Email, code, and new password are required" });
+      if (!user || new Date(user.reset_token_expires) < new Date()) {
+        return res.status(400).json({ error: "رابط إعادة التعيين غير صالح أو منتهي الصلاحية" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      db.prepare("UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?").run(hashedPassword, user.id);
+
+      res.json({ success: true });
+    } catch (e) {
+      res.status(400).json({ error: "رابط إعادة التعيين غير صالح أو منتهي الصلاحية" });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters" });
-    }
-
-    const result = await verifyOtp(email, "forgot_password", String(otp));
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    const user = db.prepare("SELECT id FROM users WHERE email = ?").get(email) as any;
-    if (!user) {
-      return res.status(404).json({ error: "Account not found" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashedPassword, user.id);
-
-    res.json({ success: true });
   });
 
   app.post("/api/auth/login", authLimiter, async (req, res) => {
-    let { email, password, captchaToken } = req.body;
-    email = validator.normalizeEmail(email);
-
+    const { email, password, captchaToken } = req.body;
+    
     // Input Validation
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
@@ -982,16 +991,12 @@ async function startServer() {
       logActivity("Failed login attempt", 0, `Failed login attempt for email: ${email}`);
       return res.status(401).json({ error: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
     }
-
-    if (!user.is_verified) {
-      logActivity("Failed login attempt", user.id, `Unverified login attempt: ${email}`);
-      return res.status(403).json({
-        error: "Please verify your email first.",
-        requiresOtpVerification: true,
-        email: user.email
-      });
+    
+    if (user.role === 'dealer' && !user.is_verified) {
+      logActivity("Failed login attempt", user.id, `Unverified dealer login attempt: ${email}`);
+      return res.status(403).json({ error: "يرجى التحقق من بريدك الإلكتروني أولاً" });
     }
-
+    
     let dealerId = null;
     if (user.role === 'dealer') {
       const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(user.id) as any;
@@ -1533,6 +1538,7 @@ async function startServer() {
     const dealer = db.prepare("SELECT name, user_id FROM dealers WHERE id = ?").get(req.params.id) as any;
     if (dealer) {
       db.prepare("UPDATE dealers SET status = 'active' WHERE id = ?").run(req.params.id);
+      db.prepare("UPDATE users SET is_verified = 1 WHERE id = ?").run(dealer.user_id);
       logActivity("Admin approved dealer", req.user.id, `Admin approved dealer: ${dealer.name} (ID: ${req.params.id})`);
       createNotification(dealer.user_id, "approval", "تمت الموافقة على حساب المعرض الخاص بك بنجاح!");
       res.json({ success: true });
@@ -1661,49 +1667,6 @@ async function startServer() {
     res.json({ id: result.lastInsertRowid });
   });
 
-  app.get("/api/dealer/reels", authenticate, (req: any, res) => {
-    if (req.user.role !== 'dealer') return res.status(403).json({ error: "Only dealers can access this" });
-
-    const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(req.user.id) as any;
-    if (!dealer) return res.status(404).json({ error: "Dealer profile not found" });
-
-    const reels = db.prepare(`
-      SELECT r.*, c.make, c.model
-      FROM reels r
-      LEFT JOIN cars c ON r.car_id = c.id
-      WHERE r.dealer_id = ?
-      ORDER BY r.id DESC
-    `).all(dealer.id);
-    res.json(reels);
-  });
-
-  app.delete("/api/reels/:id", authenticate, (req: any, res) => {
-    if (req.user.role !== 'dealer') return res.status(403).json({ error: "Only dealers can delete reels" });
-
-    const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(req.user.id) as any;
-    if (!dealer) return res.status(404).json({ error: "Dealer profile not found" });
-
-    const reel = db.prepare("SELECT dealer_id, video_url FROM reels WHERE id = ?").get(req.params.id) as any;
-    if (!reel) return res.status(404).json({ error: "Reel not found" });
-
-    if (reel.dealer_id !== dealer.id) {
-      return res.status(403).json({ error: "Unauthorized to delete this reel" });
-    }
-
-    try {
-      db.prepare("DELETE FROM reel_likes WHERE reel_id = ?").run(req.params.id);
-      db.prepare("DELETE FROM reels WHERE id = ?").run(req.params.id);
-      if (reel.video_url) {
-        const videoPath = path.join(process.cwd(), reel.video_url.replace(/^\//, ""));
-        fs.unlink(videoPath, () => {});
-      }
-      res.json({ success: true });
-    } catch (e) {
-      console.error("[DELETE] Error deleting reel:", e);
-      res.status(500).json({ error: "Failed to delete reel" });
-    }
-  });
-
   app.post("/api/reels/:id/view", (req, res) => {
     db.prepare("UPDATE reels SET views = views + 1 WHERE id = ?").run(req.params.id);
     res.json({ success: true });
@@ -1725,8 +1688,6 @@ async function startServer() {
       res.json({ success: true, liked: true });
     }
   });
-
-
 
   // WhatsApp Cooldown
   app.post("/api/contact/whatsapp-click", cooldownMiddleware("whatsapp_click", 5), (req, res) => {

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Car, User } from "../types";
 import { api } from "../services/api";
-import { GoogleGenAI, Type } from "@google/genai";
 import { ChevronLeft, Send, Bot, User as UserIcon, Loader2, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { CarCard } from "../components/CarCard";
@@ -37,20 +36,7 @@ export const SmartAIScreen: React.FC<SmartAIScreenProps> = ({
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [allCars, setAllCars] = useState<Car[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const fetchCars = async () => {
-      try {
-        const cars = await api.cars.getAll();
-        setAllCars(cars);
-      } catch (error) {
-        console.error("Failed to fetch cars:", error);
-      }
-    };
-    fetchCars();
-  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -65,75 +51,18 @@ export const SmartAIScreen: React.FC<SmartAIScreenProps> = ({
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-      
-      // Prepare context about available cars
-      const carContext = allCars.map(c => ({
-        id: c.id,
-        make: c.make,
-        model: c.model,
-        year: c.year,
-        price: c.price,
-        mileage: c.mileage,
-        location: c.location,
-        fuel_type: c.fuel_type,
-        status: c.status
-      }));
+      const result = await api.aiSearch.chat(userMessage);
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: `
-              You are a smart car assistant for an Egyptian car marketplace app called "للجردي".
-              Your goal is to help users find cars based on their natural language queries.
-              
-              Context:
-              - Available cars in our database: ${JSON.stringify(carContext)}
-              - User query: "${userMessage}"
-              
-              Instructions:
-              1. Respond in Arabic (Egyptian dialect preferred if natural).
-              2. If the user asks for suggestions with a budget (e.g., "معايا 500 ألف"), look for cars in the database that fit.
-              3. If you find matching cars in the database, mention them and I will display them below your message.
-              4. If no cars match exactly in the database, provide general market advice and suggestions based on your general car knowledge.
-              5. Be helpful, professional, and friendly.
-              6. Return your response in JSON format with two fields:
-                 - "text": Your text response to the user.
-                 - "matchedCarIds": An array of IDs of cars from the provided context that match the user's request.
-            `}]
-          }
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              text: { type: Type.STRING },
-              matchedCarIds: { 
-                type: Type.ARRAY, 
-                items: { type: Type.INTEGER } 
-              }
-            },
-            required: ["text", "matchedCarIds"]
-          }
-        }
-      });
-
-      const result = JSON.parse(response.text);
-      const matchedCars = allCars.filter(c => result.matchedCarIds.includes(c.id));
-
-      setMessages(prev => [...prev, { 
-        role: "assistant", 
+      setMessages(prev => [...prev, {
+        role: "assistant",
         content: result.text,
-        cars: matchedCars.length > 0 ? matchedCars : undefined
+        cars: result.cars && result.cars.length > 0 ? result.cars : undefined
       }]);
     } catch (error) {
       console.error("AI Error:", error);
-      setMessages(prev => [...prev, { 
-        role: "assistant", 
-        content: "عذراً، حدث خطأ أثناء معالجة طلبك. يرجى المحاولة مرة أخرى." 
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: "عذراً، حدث خطأ أثناء معالجة طلبك. يرجى المحاولة مرة أخرى."
       }]);
     } finally {
       setIsLoading(false);

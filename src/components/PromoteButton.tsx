@@ -30,11 +30,11 @@ export const PromoteButton: React.FC<PromoteButtonProps> = ({ carId, userId, isP
         setStatus("success");
         onSuccess?.();
       } else {
-        setError(res.error || "Failed to promote car");
+        setError(res.error || "فشل ترويج السيارة");
         setStatus("error");
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred");
+      setError(err.message || "حدث خطأ ما");
       setStatus("error");
     } finally {
       setLoading(false);
@@ -89,7 +89,7 @@ export const PromoteButton: React.FC<PromoteButtonProps> = ({ carId, userId, isP
             </motion.div>
           )}
         </AnimatePresence>
-        <span>{isPromoted ? "Promoted" : status === "success" ? "Done!" : status === "error" ? "Limit Reached" : "Promote"}</span>
+        <span>{isPromoted ? "مروَّجة" : status === "success" ? "تم!" : status === "error" ? "تم الوصول للحد الأقصى" : "ترويج"}</span>
       </motion.button>
 
       {error && (

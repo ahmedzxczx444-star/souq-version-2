@@ -3,7 +3,7 @@ import { ChevronLeft, Plus, Edit2, Trash2, User, Mail, Shield, Loader2, Car as C
 import { api } from "../services/api";
 import { subscriptionsEnabled } from "../constants/config";
 import { PromoteButton } from "../components/PromoteButton";
-import { Car, User as UserType, Dealer, Reel } from "../types";
+import { Car, User as UserType, Dealer } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 
 interface DealerDashboardProps {
@@ -18,19 +18,15 @@ interface DealerDashboardProps {
 
 export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, onAddCar, onAddReel, onEditCar, t, initialSection = 'cars' }) => {
   const [cars, setCars] = useState<Car[]>([]);
-  const [reels, setReels] = useState<Reel[]>([]);
   const [dealerProfile, setDealerProfile] = useState<Dealer | null>(null);
   const [loading, setLoading] = useState(true);
-  const [reelsLoading, setReelsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [deletingReelId, setDeletingReelId] = useState<number | null>(null);
   const [activeSection, setActiveSection] = useState<'cars' | 'profile'>(initialSection);
   const [isSaving, setIsSaving] = useState(false);
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
     fetchCars();
-    fetchReels();
     fetchDealerProfile();
     fetchStats();
   }, []);
@@ -52,17 +48,6 @@ export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, 
       console.error("Failed to fetch dealer cars:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchReels = async () => {
-    try {
-      const data = await api.reels.getDealerReels();
-      setReels(data);
-    } catch (error) {
-      console.error("Failed to fetch dealer reels:", error);
-    } finally {
-      setReelsLoading(false);
     }
   };
 
@@ -110,7 +95,7 @@ export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, 
         },
         (error) => {
           if (error.code !== error.PERMISSION_DENIED) {
-            alert("Unable to get location");
+            alert("تعذر تحديد الموقع");
           }
         }
       );
@@ -133,7 +118,7 @@ export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, 
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm(t.deleteConfirm)) return;
+    if (!window.confirm(t.confirmDelete)) return;
     setDeletingId(id);
     try {
       await api.cars.delete(id);
@@ -142,19 +127,6 @@ export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, 
       console.error("Failed to delete car:", error);
     } finally {
       setDeletingId(null);
-    }
-  };
-
-  const handleDeleteReel = async (id: number) => {
-    if (!window.confirm(t.deleteReelConfirm)) return;
-    setDeletingReelId(id);
-    try {
-      await api.reels.delete(id);
-      setReels(prev => prev.filter(r => r.id !== id));
-    } catch (error) {
-      console.error("Failed to delete reel:", error);
-    } finally {
-      setDeletingReelId(null);
     }
   };
 
@@ -267,7 +239,6 @@ export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, 
                 <p className="text-gray-400 font-bold">No cars listed yet.</p>
               </div>
             ) : (
-              
               <div className="grid gap-4">
                 <AnimatePresence>
                   {cars.map((car) => (
@@ -285,6 +256,8 @@ export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, 
                           alt={car.make}
                           className="w-full h-full object-cover"
                           referrerPolicy="no-referrer"
+                          loading="lazy"
+                          decoding="async"
                         />
                       </div>
                       <div className="flex-1 flex flex-col justify-between py-1">
@@ -319,70 +292,6 @@ export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, 
                             className="flex-1 flex items-center justify-center gap-1 bg-red-50 text-red-500 py-2 rounded-xl text-[10px] font-bold hover:bg-red-100 transition-colors disabled:opacity-50"
                           >
                             {deletingId === car.id ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <>
-                                <Trash2 size={12} />
-                                {t.delete}
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between pt-4">
-              <h2 className="text-xl font-black text-gray-900">{t.myReels}</h2>
-            </div>
-
-            {reelsLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="animate-spin text-gray-300" size={32} />
-              </div>
-            ) : reels.length === 0 ? (
-              <div className="bg-white rounded-[32px] p-12 text-center border border-gray-100">
-                <p className="text-gray-400 font-bold">{t.noReels}</p>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                <AnimatePresence>
-                  {reels.map((reel) => (
-                    <motion.div
-                      key={reel.id}
-                      layout
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-white rounded-3xl p-3 border border-gray-100 shadow-sm flex gap-4"
-                    >
-                      <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
-                        <video
-                          src={reel.video_url}
-                          className="w-full h-full object-cover"
-                          muted
-                          preload="metadata"
-                        />
-                      </div>
-                      <div className="flex-1 flex flex-col justify-between py-1">
-                        <div>
-                          <h3 className="font-black text-gray-900 text-sm">
-                            {reel.make && reel.model ? `${reel.make} ${reel.model}` : t.myReels}
-                          </h3>
-                          <p className="text-gray-400 font-bold text-xs mt-1 line-clamp-1">
-                            {reel.caption}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleDeleteReel(reel.id)}
-                            disabled={deletingReelId === reel.id}
-                            className="flex-1 flex items-center justify-center gap-1 bg-red-50 text-red-500 py-2 rounded-xl text-[10px] font-bold hover:bg-red-100 transition-colors disabled:opacity-50"
-                          >
-                            {deletingReelId === reel.id ? (
                               <Loader2 size={12} className="animate-spin" />
                             ) : (
                               <>

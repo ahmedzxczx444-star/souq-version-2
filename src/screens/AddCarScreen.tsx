@@ -109,7 +109,7 @@ export const AddCarScreen: React.FC<AddCarScreenProps> = ({ onBack, onSuccess, t
       onSuccess();
     } catch (error: any) {
       console.error("Failed to save car:", error);
-      const message = error.response?.data?.error || error.message || "Failed to save car. Please try again.";
+      const message = error.response?.data?.error || error.message || "فشل حفظ بيانات السيارة. يرجى المحاولة مرة أخرى.";
       alert(message);
     } finally {
       setLoading(false);
@@ -153,7 +153,7 @@ export const AddCarScreen: React.FC<AddCarScreenProps> = ({ onBack, onSuccess, t
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Make (e.g. Toyota)"
+                placeholder="الماركة (مثال: تويوتا)"
                 required
                 className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl py-4 px-6 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/5"
                 value={formData.make}
@@ -161,7 +161,7 @@ export const AddCarScreen: React.FC<AddCarScreenProps> = ({ onBack, onSuccess, t
               />
               <input
                 type="text"
-                placeholder="Model (e.g. Camry)"
+                placeholder="الموديل (مثال: كورولا)"
                 required
                 className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl py-4 px-6 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/5"
                 value={formData.model}
@@ -226,7 +226,7 @@ export const AddCarScreen: React.FC<AddCarScreenProps> = ({ onBack, onSuccess, t
             <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">{t.location}</label>
             <input
               type="text"
-              placeholder="City, Country"
+              placeholder="المدينة (مثال: القاهرة)"
               required
               className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 px-6 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/5"
               value={formData.location}
@@ -307,7 +307,7 @@ export const AddCarScreen: React.FC<AddCarScreenProps> = ({ onBack, onSuccess, t
               <Video className="absolute ltr:left-4 rtl:right-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="url"
-                placeholder="Video URL (YouTube/MP4)"
+                placeholder="رابط الفيديو (يوتيوب/MP4)"
                 className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 ltr:pl-12 ltr:pr-4 rtl:pr-12 rtl:pl-4 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/5"
                 value={formData.video_url}
                 onChange={e => setFormData({ ...formData, video_url: e.target.value })}

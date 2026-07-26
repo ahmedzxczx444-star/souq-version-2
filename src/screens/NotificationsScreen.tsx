@@ -98,7 +98,7 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ onBack
                     </p>
                     <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold">
                       <Clock size={10} />
-                      <span>{new Date(notification.created_at).toLocaleString()}</span>
+                      <span>{new Date(notification.created_at).toLocaleString('ar-EG')}</span>
                     </div>
                   </div>
                 </div>

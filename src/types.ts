@@ -23,7 +23,6 @@ export interface Car {
   dealer_logo?: string;
   dealer_location?: string;
   dealer_phone?: string;
-  dealer_whatsapp?: string;
   dealer_user_id?: number;
 }
 
@@ -115,4 +114,5 @@ export interface ActivityLog {
 export interface AuthResponse {
   token: string;
   user: User;
+  requiresVerification?: boolean;
 }

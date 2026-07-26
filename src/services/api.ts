@@ -141,24 +141,29 @@ export const api = {
       const res = await fetch(`${API_BASE}/reels/${id}/view`, { method: "POST" });
       return res.json();
     },
-    getDealerReels: async (): Promise<Reel[]> => {
-      const res = await fetch(`${API_BASE}/dealer/reels`, { headers: getHeaders() });
-      if (!res.ok) throw new Error("Failed to fetch dealer reels");
-      return res.json();
-    },
-    delete: async (id: number): Promise<{ success: boolean }> => {
-      const res = await fetch(`${API_BASE}/reels/${id}`, {
-        method: "DELETE",
-        headers: getHeaders(),
-      });
-      if (!res.ok) throw new Error("Failed to delete reel");
-      return res.json();
-    },
     like: async (id: number): Promise<any> => {
       const res = await fetch(`${API_BASE}/reels/${id}/like`, { 
         method: "POST",
         headers: getHeaders(),
       });
+      return res.json();
+    },
+  },
+  search: {
+    query: async (q: string): Promise<{ results: Car[]; count: number; noExactMatch: boolean; emptyQuery: boolean; parsed: any }> => {
+      const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error("Search failed");
+      return res.json();
+    },
+  },
+  aiSearch: {
+    chat: async (message: string): Promise<{ text: string; cars: Car[] }> => {
+      const res = await fetch(`${API_BASE}/ai-search/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+      if (!res.ok) throw new Error("AI search failed");
       return res.json();
     },
   },
@@ -182,54 +187,17 @@ export const api = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const err: any = new Error(data.error || "Invalid credentials");
-        err.requiresOtpVerification = data.requiresOtpVerification;
-        err.email = data.email;
-        throw err;
-      }
-      return data;
+      if (!res.ok) throw new Error("Invalid credentials");
+      return res.json();
     },
-    register: async (data: any): Promise<{ success: boolean; email: string; requiresOtpVerification: boolean }> => {
+    register: async (data: any): Promise<AuthResponse> => {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || "Registration failed");
-      return body;
-    },
-    sendOtp: async (email: string, purpose: "register" | "forgot_password" | "change_email"): Promise<{ success: boolean; error?: string; cooldownSeconds?: number }> => {
-      const res = await fetch(`${API_BASE}/auth/send-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, purpose }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw Object.assign(new Error(data.error || "Failed to send verification code"), data);
-      return data;
-    },
-    resendOtp: async (email: string, purpose: "register" | "forgot_password" | "change_email"): Promise<{ success: boolean; error?: string; cooldownSeconds?: number }> => {
-      const res = await fetch(`${API_BASE}/auth/resend-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, purpose }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw Object.assign(new Error(data.error || "Failed to resend verification code"), data);
-      return data;
-    },
-    verifyOtp: async (email: string, otp: string, purpose: "register" | "forgot_password" | "change_email"): Promise<AuthResponse> => {
-      const res = await fetch(`${API_BASE}/auth/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp, purpose }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Invalid verification code");
-      return data;
+      if (!res.ok) throw new Error("Registration failed");
+      return res.json();
     },
     forgotPassword: async (email: string): Promise<{ success: boolean }> => {
       const res = await fetch(`${API_BASE}/auth/forgot-password`, {
@@ -240,7 +208,7 @@ export const api = {
       if (!res.ok) throw new Error("Failed to send reset email");
       return res.json();
     },
-    resetPassword: async (data: { email: string; otp: string; password: string }): Promise<{ success: boolean }> => {
+    resetPassword: async (data: any): Promise<{ success: boolean }> => {
       const res = await fetch(`${API_BASE}/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

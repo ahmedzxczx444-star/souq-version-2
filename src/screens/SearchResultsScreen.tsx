@@ -26,24 +26,18 @@ export const SearchResultsScreen: React.FC<SearchResultsScreenProps> = ({
 }) => {
   const [cars, setCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
+  const [noExactMatch, setNoExactMatch] = useState(false);
 
   useEffect(() => {
     const fetchResults = async () => {
       setLoading(true);
       try {
-        // Fetch all cars and filter them on the frontend as per target functionality
-        // but if the API supported search that would be better. 
-        // Based on HomeScreen logic, it filters locally.
-        const allCars = await api.cars.getAll();
-        const filtered = allCars.filter(car => {
-          const make = car.make?.toLowerCase() || "";
-          const model = car.model?.toLowerCase() || "";
-          const searchLower = query.toLowerCase();
-          return make.includes(searchLower) || model.includes(searchLower);
-        });
-        setCars(filtered);
+        const data = await api.search.query(query);
+        setCars(data.results);
+        setNoExactMatch(data.noExactMatch);
       } catch (error) {
         console.error("Failed to fetch search results:", error);
+        setCars([]);
       } finally {
         setLoading(false);
       }
@@ -69,15 +63,20 @@ export const SearchResultsScreen: React.FC<SearchResultsScreenProps> = ({
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <Loader2 className="animate-spin text-emerald-500" size={32} />
-            <p className="text-sm font-bold text-gray-400">Searching...</p>
+            <p className="text-sm font-bold text-gray-400">جاري البحث...</p>
           </div>
         ) : cars.length > 0 ? (
           <div className="space-y-6">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-1 h-6 bg-emerald-500 rounded-full" />
-              <p className="text-gray-900 font-black">{cars.length} {t.carsFound || "Results Found"}</p>
+              <p className="text-gray-900 font-black">{cars.length} {t.carsFound}</p>
             </div>
-            
+            {noExactMatch && (
+              <p className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 -mt-2">
+                لم نجد نتائج مطابقة تمامًا لبحثك، إليك أقرب السيارات المتاحة:
+              </p>
+            )}
+
             <div className="grid gap-6">
               {cars.map((car) => (
                 <CarCard
@@ -101,15 +100,15 @@ export const SearchResultsScreen: React.FC<SearchResultsScreenProps> = ({
             <div className="w-20 h-20 bg-gray-50 rounded-[32px] flex items-center justify-center mb-6 text-gray-300">
               <Search size={40} />
             </div>
-            <h3 className="text-xl font-black text-gray-900 mb-2">No results found</h3>
-            <p className="text-gray-400 text-sm font-medium max-w-[200px]">
-              We couldn't find any cars matching your search.
+            <h3 className="text-xl font-black text-gray-900 mb-2">لا توجد نتائج</h3>
+            <p className="text-gray-400 text-sm font-medium max-w-[240px]">
+              لم نجد أي سيارات مطابقة لبحثك. جرّب كلمات مختلفة أو تصفح أحدث السيارات المعروضة.
             </p>
-            <button 
+            <button
               onClick={onBack}
               className="mt-8 px-8 py-3 bg-black text-white rounded-2xl font-bold text-sm shadow-xl shadow-black/10 transition-all active:scale-95"
             >
-              Go Back
+              العودة
             </button>
           </div>
         )}

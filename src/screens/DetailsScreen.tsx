@@ -51,15 +51,6 @@ ${carUrl}`;
     }
   };
 
-  const formatWhatsAppNumber = (number?: string) => {
-    if (!number) return "";
-    let digits = number.replace(/\D/g, "");
-    if (digits.startsWith("00")) digits = digits.slice(2);
-    if (digits.startsWith("0")) digits = "20" + digits.slice(1);
-    else if (!digits.startsWith("20")) digits = "20" + digits;
-    return digits;
-  };
-
   if (loading || !car) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
@@ -68,11 +59,13 @@ ${carUrl}`;
     );
   }
 
+  const transmissionLabels: Record<string, string> = { Automatic: "أوتوماتيك", Manual: "يدوي" };
+
   const specs = [
     { icon: Calendar, label: t.year, value: car.year },
-    { icon: Gauge, label: t.mileage, value: `${car.mileage.toLocaleString()} mi` },
+    { icon: Gauge, label: t.mileage, value: `${car.mileage.toLocaleString()} كم` },
     { icon: Fuel, label: t.fuel, value: car.fuel_type },
-    { icon: Settings2, label: t.trans, value: car.transmission },
+    { icon: Settings2, label: t.trans, value: transmissionLabels[car.transmission] || car.transmission },
   ];
 
   return (
@@ -144,7 +137,7 @@ ${carUrl}`;
                     activeImage === i ? "border-white scale-110 shadow-lg" : "border-transparent opacity-60 scale-90"
                   }`}
                 >
-                  <img src={img} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={img} className="w-full h-full object-cover" referrerPolicy="no-referrer" loading="lazy" decoding="async" />
                 </button>
               ))}
             </div>
@@ -172,7 +165,7 @@ ${carUrl}`;
             </div>
           </div>
           <div className="ltr:text-right rtl:text-left">
-            <p className="text-2xl font-black text-black">£{car.price.toLocaleString()}</p>
+            <p className="text-2xl font-black text-black">{car.price.toLocaleString()} ج.م</p>
             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.fixedPrice}</p>
           </div>
         </div>
@@ -201,7 +194,7 @@ ${carUrl}`;
           className="bg-gray-900 rounded-3xl p-5 flex items-center justify-between cursor-pointer"
         >
           <div className="flex items-center gap-4">
-            <img src={car.dealer_logo} className="w-12 h-12 rounded-2xl object-cover border-2 border-white/10" referrerPolicy="no-referrer" />
+            <img src={car.dealer_logo} className="w-12 h-12 rounded-2xl object-cover border-2 border-white/10" referrerPolicy="no-referrer" loading="lazy" decoding="async" />
             <div>
               <h3 className="text-white font-bold">{car.dealer_name}</h3>
               <p className="text-gray-400 text-xs font-medium">{t.officialDealer}</p>
@@ -215,8 +208,8 @@ ${carUrl}`;
 
       {/* Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 p-6 flex gap-4 z-50">
-        <a
-          href={`https://wa.me/${formatWhatsAppNumber(car.dealer_whatsapp)}?text=${encodeURIComponent(`السلام عليكم، أنا مهتم بسيارة ${car.make} ${car.model} ${car.year} موديل الموجودة على سوق السيارات.
+        <a 
+          href={`https://wa.me/${car.dealer_whatsapp}?text=${encodeURIComponent(`السلام عليكم، أنا مهتم بسيارة ${car.make} ${car.model} ${car.year} موديل الموجودة على سوق السيارات.
 السعر: ${car.price.toLocaleString()} ج.م
 الرابط: ${window.location.origin}/car/${car.id}
 الصورة: ${car.images[0]}`)}`}

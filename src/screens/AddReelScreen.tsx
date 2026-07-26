@@ -37,14 +37,14 @@ export const AddReelScreen: React.FC<AddReelScreenProps> = ({ onBack, onSuccess,
 
     // Check size (100MB)
     if (file.size > 100 * 1024 * 1024) {
-      setError("Maximum file size: 100MB");
+      setError("الحد الأقصى لحجم الملف: 100 ميجابايت");
       return;
     }
 
     // Check format
     const allowedTypes = ['video/mp4', 'video/quicktime']; // mp4, mov
     if (!allowedTypes.includes(file.type)) {
-      setError("Allowed formats: MP4, MOV");
+      setError("الصيغ المسموح بها: MP4, MOV");
       return;
     }
 
@@ -54,7 +54,7 @@ export const AddReelScreen: React.FC<AddReelScreenProps> = ({ onBack, onSuccess,
     video.onloadedmetadata = () => {
       window.URL.revokeObjectURL(video.src);
       if (video.duration > 180) {
-        setError("Maximum video length: 3 minutes");
+        setError("الحد الأقصى لمدة الفيديو: 3 دقائق");
         setVideoFile(null);
         setVideoPreview(null);
       } else {
@@ -69,7 +69,7 @@ export const AddReelScreen: React.FC<AddReelScreenProps> = ({ onBack, onSuccess,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!videoFile) {
-      setError("Please upload a video");
+      setError("يرجى رفع فيديو");
       return;
     }
 
@@ -87,7 +87,7 @@ export const AddReelScreen: React.FC<AddReelScreenProps> = ({ onBack, onSuccess,
       onSuccess();
     } catch (error) {
       console.error("Failed to upload reel:", error);
-      setError("Failed to upload reel. Please try again.");
+      setError("فشل رفع الريلز. يرجى المحاولة مرة أخرى.");
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,3 @@
-import heroImg from "../assets/hero.jpg";
 import React, { useEffect, useState } from "react";
 import { Car, Dealer } from "../types";
 import { api } from "../services/api";
@@ -6,6 +5,7 @@ import { CarCard } from "../components/CarCard";
 import { DealerCard } from "../components/DealerCard";
 import { Search, Filter, SlidersHorizontal, Languages, Crown, Trophy, ChevronLeft, X, ChevronDown, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import heroImage from "../assets/hero.jpg";
 
 interface HomeScreenProps {
   onCarClick: (car: Car) => void;
@@ -82,8 +82,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onCarClick, onDealerClic
       {/* Hero Section */}
       <header className="relative h-[500px] flex flex-col items-center pt-16 px-6 overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img 
-            src={heroImg}
+          <img
+            src={heroImage}
             className="w-full h-full object-cover scale-105"
             referrerPolicy="no-referrer"
           />

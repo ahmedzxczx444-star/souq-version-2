@@ -21,11 +21,13 @@ export const DealerCard: React.FC<DealerCardProps> = ({ dealer, onClick, t, vari
         className="flex-shrink-0 w-60 bg-white rounded-[24px] overflow-hidden border border-gray-100 shadow-sm group"
       >
         <div className="relative h-28 overflow-hidden">
-          <img 
-            src={dealer.logo} 
-            alt={dealer.name} 
+          <img
+            src={dealer.logo}
+            alt={dealer.name}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             referrerPolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
           />
           <div className="absolute top-2 ltr:left-2 rtl:right-2">
             <div className="bg-[#1a4d3e] text-white text-[7px] font-black px-2 py-1 rounded-lg flex items-center gap-1 shadow-md">
@@ -46,12 +48,12 @@ export const DealerCard: React.FC<DealerCardProps> = ({ dealer, onClick, t, vari
               <span>{dealer.car_count || 0} {t.carsCount}</span>
             </div>
             <div className="flex items-center gap-1 ltr:text-right rtl:text-left">
-              <span>5550 {t.reviews}</span>
+              <span>{dealer.reviews_count || 0} {t.reviews}</span>
             </div>
           </div>
           <div className="mt-1.5 pt-1.5 border-t border-gray-50 flex items-center gap-1 text-[8px] text-gray-400 font-bold font-arabic">
             <MapPin size={9} className="text-[#1a4d3e]" />
-            <span className="truncate">{dealer.location} • 27,000 km</span>
+            <span className="truncate">{dealer.location}</span>
           </div>
         </div>
       </motion.div>
@@ -66,18 +68,20 @@ export const DealerCard: React.FC<DealerCardProps> = ({ dealer, onClick, t, vari
     >
       <div className="p-5">
         <div className="flex items-start justify-between mb-4">
-          <img 
-            src={dealer.logo} 
-            alt={dealer.name} 
+          <img
+            src={dealer.logo}
+            alt={dealer.name}
             className="w-16 h-16 rounded-2xl object-cover shadow-xl border border-white/10"
             referrerPolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
           />
           <div className="flex flex-col items-end gap-1">
             <div className="flex items-center gap-1 bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded-lg border border-emerald-500/20">
               <Star size={12} className="fill-emerald-500" />
               <span className="text-xs font-black">{dealer.rating}</span>
             </div>
-            <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Premium Dealer</span>
+            <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">معرض مميز</span>
           </div>
         </div>
 

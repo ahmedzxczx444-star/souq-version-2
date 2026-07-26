@@ -60,6 +60,7 @@ export const FavoritesScreen: React.FC<FavoritesScreenProps> = ({ onCarClick, fa
                 toggleFavorite(car.id);
               }}
               t={t}
+              variant="feed"
               user={user} // ADDED
             />
           ))}

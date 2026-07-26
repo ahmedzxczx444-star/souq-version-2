@@ -292,10 +292,12 @@ export const DealerScreen: React.FC<DealerScreenProps> = ({ dealerId, onBack, on
                   onClick={() => onCarClick(car)}
                   className="relative aspect-square bg-gray-100 overflow-hidden cursor-pointer rounded-xl"
                 >
-                  <img 
-                    src={car.images[0]} 
+                  <img
+                    src={car.images[0]}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
+                    loading="lazy"
+                    decoding="async"
                   />
                   {car.isPromoted && ( // ADDED
                     <div className="absolute top-1 right-1 bg-emerald-500 text-white p-1 rounded-md shadow-lg">
@@ -305,7 +307,7 @@ export const DealerScreen: React.FC<DealerScreenProps> = ({ dealerId, onBack, on
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                   <div className="absolute bottom-2 left-2 right-2 text-white">
                     <p className="text-[10px] font-black leading-tight truncate">{car.make} {car.model}</p>
-                    <p className="text-[8px] font-bold opacity-80">{car.year} • {car.price.toLocaleString()} {t.currency}</p>
+                    <p className="text-[8px] font-bold opacity-80">{car.year} • {car.price.toLocaleString()} ج.م</p>
                   </div>
                 </motion.div>
               );

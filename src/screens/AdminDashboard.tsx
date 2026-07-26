@@ -29,6 +29,36 @@ interface AdminDashboardProps {
 
 type AdminSection = 'dashboard' | 'cars' | 'dealers' | 'users' | 'activity' | 'requests';
 
+const ACTION_LABELS: Record<string, string> = {
+  "Failed login attempt": "محاولة تسجيل دخول فاشلة",
+  "Successful login": "تسجيل دخول ناجح",
+  "Password changed": "تم تغيير كلمة المرور",
+  "Logout from all devices": "تسجيل الخروج من كل الأجهزة",
+  "Dealer added car": "أضاف المعرض سيارة",
+  "Admin changed user plan": "غيّر المدير باقة المستخدم",
+  "Dealer promoted car": "روّج المعرض سيارة",
+  "Admin promoted car for user": "روّج المدير سيارة لمستخدم",
+  "Admin reset user usage": "أعاد المدير ضبط استخدام المستخدم",
+  "Admin reset all users usage": "أعاد المدير ضبط استخدام كل المستخدمين",
+  "Subscription plan changed": "تم تغيير باقة الاشتراك",
+  "Car promoted via API": "تم ترويج سيارة",
+  "User followed dealer": "تابع مستخدم معرضًا",
+  "Admin deleted car": "حذف المدير سيارة",
+  "Admin hid car": "أخفى المدير سيارة",
+  "Admin approved dealer": "وافق المدير على معرض",
+  "Admin rejected dealer": "رفض المدير معرضًا",
+  "Admin suspended dealer": "أوقف المدير معرضًا",
+  "Admin deleted dealer": "حذف المدير معرضًا",
+  "Admin banned user": "حظر المدير مستخدمًا",
+  "Admin deleted user": "حذف المدير مستخدمًا",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  dealer: "معرض",
+  super_admin: "مدير عام",
+  user: "مستخدم",
+};
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, t }) => {
   const [activeSection, setActiveSection] = useState<AdminSection>('dashboard');
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -81,7 +111,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   };
 
   const handleDeleteCar = async (id: number) => {
-    if (confirm("Are you sure you want to delete this car?")) {
+    if (confirm("هل أنت متأكد من حذف هذه السيارة؟")) {
       await api.admin.deleteCar(id);
       fetchData();
     }
@@ -93,42 +123,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   };
 
   const handleApproveDealer = async (id: number) => {
-    if (confirm("Approve this dealer?")) {
+    if (confirm("الموافقة على هذا المعرض؟")) {
       await api.admin.approveDealer(id);
       fetchData();
     }
   };
 
   const handleRejectDealer = async (id: number) => {
-    if (confirm("Reject and disable this dealer account?")) {
+    if (confirm("رفض وتعطيل حساب هذا المعرض؟")) {
       await api.admin.rejectDealer(id);
       fetchData();
     }
   };
 
   const handleSuspendDealer = async (id: number) => {
-    if (confirm("Are you sure you want to suspend this dealer?")) {
+    if (confirm("هل أنت متأكد من إيقاف هذا المعرض؟")) {
       await api.admin.suspendDealer(id);
       fetchData();
     }
   };
 
   const handleDeleteDealer = async (id: number) => {
-    if (confirm("Are you sure you want to delete this dealer and all their cars?")) {
+    if (confirm("هل أنت متأكد من حذف هذا المعرض وكل سياراته؟")) {
       await api.admin.deleteDealer(id);
       fetchData();
     }
   };
 
   const handleBanUser = async (id: number) => {
-    if (confirm("Are you sure you want to ban this user?")) {
+    if (confirm("هل أنت متأكد من حظر هذا المستخدم؟")) {
       await api.admin.banUser(id);
       fetchData();
     }
   };
 
   const handleDeleteUser = async (id: number) => {
-    if (confirm("Are you sure you want to delete this user?")) {
+    if (confirm("هل أنت متأكد من حذف هذا المستخدم؟")) {
       await api.admin.deleteUser(id);
       fetchData();
     }
@@ -139,30 +169,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       <div className="flex items-center justify-center h-screen bg-gray-50">
         <div className="text-center p-8 bg-white rounded-3xl shadow-xl border border-red-100">
           <ShieldAlert size={64} className="text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-black text-gray-900 mb-2">Access Denied</h1>
-          <p className="text-gray-500 mb-6">You do not have permission to access the admin panel.</p>
-          <button onClick={onLogout} className="bg-gray-900 text-white px-8 py-3 rounded-2xl font-bold">Logout</button>
+          <h1 className="text-2xl font-black text-gray-900 mb-2">غير مصرح بالدخول</h1>
+          <p className="text-gray-500 mb-6">ليس لديك صلاحية للوصول إلى لوحة التحكم.</p>
+          <button onClick={onLogout} className="bg-gray-900 text-white px-8 py-3 rounded-2xl font-bold">تسجيل الخروج</button>
         </div>
       </div>
     );
   }
 
   const sidebarItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'cars', label: 'Cars', icon: CarIcon },
-    { id: 'dealers', label: 'Dealers', icon: Store },
-    { id: 'requests', label: 'Dealer Requests', icon: ShieldAlert },
-    { id: 'users', label: 'Users', icon: Users },
-    { id: 'activity', label: 'Activity Log', icon: History },
+    { id: 'dashboard', label: 'الرئيسية', icon: LayoutDashboard },
+    { id: 'cars', label: 'السيارات', icon: CarIcon },
+    { id: 'dealers', label: 'المعارض', icon: Store },
+    { id: 'requests', label: 'طلبات المعارض', icon: ShieldAlert },
+    { id: 'users', label: 'المستخدمين', icon: Users },
+    { id: 'activity', label: 'سجل النشاط', icon: History },
   ];
+
+  const sectionTitles: Record<AdminSection, string> = {
+    dashboard: 'الرئيسية',
+    cars: 'السيارات',
+    dealers: 'المعارض',
+    requests: 'طلبات المعارض',
+    users: 'المستخدمين',
+    activity: 'سجل النشاط',
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 text-gray-900 font-sans">
       {/* Sidebar */}
       <aside className="w-72 bg-white border-r border-gray-100 flex flex-col">
         <div className="p-8">
-          <h1 className="text-2xl font-black tracking-tight text-emerald-600">Admin Panel</h1>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Super Admin Access</p>
+          <h1 className="text-2xl font-black tracking-tight text-emerald-600">لوحة تحكم الإدارة</h1>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">صلاحية المدير العام</p>
         </div>
 
         <nav className="flex-1 px-4 space-y-2">
@@ -198,7 +237,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
             className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl font-bold text-red-500 hover:bg-red-50 transition-all"
           >
             <LogOut size={20} />
-            <span>Logout</span>
+            <span>تسجيل الخروج</span>
           </button>
         </div>
       </aside>
@@ -207,14 +246,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       <main className="flex-1 overflow-y-auto p-12">
         <header className="flex justify-between items-center mb-12">
           <div>
-            <h2 className="text-4xl font-black text-gray-900 capitalize">{activeSection}</h2>
-            <p className="text-gray-400 font-medium mt-1">Manage your platform's data and activity.</p>
+            <h2 className="text-4xl font-black text-gray-900">{sectionTitles[activeSection]}</h2>
+            <p className="text-gray-400 font-medium mt-1">إدارة بيانات ونشاط المنصة.</p>
           </div>
-          
+
           <div className="relative w-80">
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="بحث..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white border border-gray-100 rounded-2xl py-4 pl-12 pr-6 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm"
@@ -242,21 +281,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                     <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-6">
                       <CarIcon size={24} />
                     </div>
-                    <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-1">Total Cars</p>
+                    <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-1">إجمالي السيارات</p>
                     <h3 className="text-4xl font-black text-gray-900">{stats.totalCars}</h3>
                   </div>
                   <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
                     <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-6">
                       <Store size={24} />
                     </div>
-                    <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-1">Total Dealers</p>
+                    <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-1">إجمالي المعارض</p>
                     <h3 className="text-4xl font-black text-gray-900">{stats.totalDealers}</h3>
                   </div>
                   <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
                     <div className="w-12 h-12 bg-purple-50 text-purple-500 rounded-2xl flex items-center justify-center mb-6">
                       <Users size={24} />
                     </div>
-                    <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-1">Total Users</p>
+                    <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-1">إجمالي المستخدمين</p>
                     <h3 className="text-4xl font-black text-gray-900">{stats.totalUsers}</h3>
                   </div>
                 </div>
@@ -267,11 +306,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-gray-50">
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Car</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Dealer</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Price</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">السيارة</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">المعرض</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">السعر</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">الحالة</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">إجراءات</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -279,10 +318,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                         <tr key={car.id} className="hover:bg-gray-50/50 transition-colors">
                           <td className="px-8 py-6">
                             <div className="flex items-center gap-4">
-                              <img src={car.images[0]} className="w-12 h-12 rounded-xl object-cover" referrerPolicy="no-referrer" />
+                              <img src={car.images[0]} className="w-12 h-12 rounded-xl object-cover" referrerPolicy="no-referrer" loading="lazy" decoding="async" />
                               <div>
                                 <p className="font-bold text-gray-900">{car.make} {car.model}</p>
-                                <p className="text-xs text-gray-400 font-medium">{car.year} • {car.mileage.toLocaleString()} km</p>
+                                <p className="text-xs text-gray-400 font-medium">{car.year} • {car.mileage.toLocaleString()} كم</p>
                               </div>
                             </div>
                           </td>
@@ -290,21 +329,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                             <p className="font-bold text-gray-600">{car.dealer_name}</p>
                           </td>
                           <td className="px-8 py-6">
-                            <p className="font-black text-emerald-600">{car.price.toLocaleString()} EGP</p>
+                            <p className="font-black text-emerald-600">{car.price.toLocaleString()} ج.م</p>
                           </td>
                           <td className="px-8 py-6">
                             <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                               car.status === 'available' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'
                             }`}>
-                              {car.status}
+                              {t[car.status || 'available']}
                             </span>
                           </td>
                           <td className="px-8 py-6">
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => handleHideCar(car.id)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all" title="Hide">
+                              <button onClick={() => handleHideCar(car.id)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all" title="إخفاء">
                                 <EyeOff size={18} />
                               </button>
-                              <button onClick={() => handleDeleteCar(car.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
+                              <button onClick={() => handleDeleteCar(car.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="حذف">
                                 <Trash2 size={18} />
                               </button>
                             </div>
@@ -321,10 +360,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-gray-50">
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Dealer</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Contact</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Cars</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">المعرض</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">التواصل</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">السيارات</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">إجراءات</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -332,7 +371,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                         <tr key={dealer.id} className="hover:bg-gray-50/50 transition-colors">
                           <td className="px-8 py-6">
                             <div className="flex items-center gap-4">
-                              <img src={dealer.logo} className="w-12 h-12 rounded-xl object-cover" referrerPolicy="no-referrer" />
+                              <img src={dealer.logo} className="w-12 h-12 rounded-xl object-cover" referrerPolicy="no-referrer" loading="lazy" decoding="async" />
                               <div>
                                 <p className="font-bold text-gray-900">{dealer.name}</p>
                                 <p className="text-xs text-gray-400 font-medium">{dealer.location}</p>
@@ -345,15 +384,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                           </td>
                           <td className="px-8 py-6">
                             <span className="bg-gray-100 px-3 py-1 rounded-full text-xs font-bold text-gray-600">
-                              {dealer.car_count} cars
+                              {dealer.car_count} سيارة
                             </span>
                           </td>
                           <td className="px-8 py-6">
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => handleSuspendDealer(dealer.id)} className="p-2 text-orange-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all" title="Suspend">
+                              <button onClick={() => handleSuspendDealer(dealer.id)} className="p-2 text-orange-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all" title="إيقاف">
                                 <Ban size={18} />
                               </button>
-                              <button onClick={() => handleDeleteDealer(dealer.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
+                              <button onClick={() => handleDeleteDealer(dealer.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="حذف">
                                 <Trash2 size={18} />
                               </button>
                             </div>
@@ -370,24 +409,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-gray-50">
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Dealer</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Contact</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Branches</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Address</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">المعرض</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">التواصل</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">الفروع</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">العنوان</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">إجراءات</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {pendingDealers.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-8 py-12 text-center text-gray-400 font-bold">No pending requests</td>
+                          <td colSpan={5} className="px-8 py-12 text-center text-gray-400 font-bold">لا توجد طلبات معلقة</td>
                         </tr>
                       ) : (
                         pendingDealers.filter(d => d.name.toLowerCase().includes(searchQuery.toLowerCase())).map(dealer => (
                           <tr key={dealer.id} className="hover:bg-gray-50/50 transition-colors">
                             <td className="px-8 py-6">
                               <div className="flex items-center gap-4">
-                                <img src={dealer.logo} className="w-12 h-12 rounded-xl object-cover" referrerPolicy="no-referrer" />
+                                <img src={dealer.logo} className="w-12 h-12 rounded-xl object-cover" referrerPolicy="no-referrer" loading="lazy" decoding="async" />
                                 <div>
                                   <p className="font-bold text-gray-900">{dealer.name}</p>
                                   <p className="text-xs text-gray-400 font-medium">{dealer.location}</p>
@@ -400,7 +439,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                             </td>
                             <td className="px-8 py-6">
                               <span className="bg-gray-100 px-3 py-1 rounded-full text-xs font-bold text-gray-600">
-                                {dealer.branches_count} branches
+                                {dealer.branches_count} فرع
                               </span>
                             </td>
                             <td className="px-8 py-6">
@@ -408,10 +447,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                             </td>
                             <td className="px-8 py-6">
                               <div className="flex items-center justify-end gap-2">
-                                <button onClick={() => handleApproveDealer(dealer.id)} className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all" title="Approve">
+                                <button onClick={() => handleApproveDealer(dealer.id)} className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all" title="قبول">
                                   <CheckCircle size={20} />
                                 </button>
-                                <button onClick={() => handleRejectDealer(dealer.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all" title="Reject">
+                                <button onClick={() => handleRejectDealer(dealer.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all" title="رفض">
                                   <XCircle size={20} />
                                 </button>
                               </div>
@@ -429,10 +468,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-gray-50">
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">User</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Role</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
-                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">المستخدم</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">الدور</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest">الحالة</th>
+                        <th className="px-8 py-6 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">إجراءات</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -446,30 +485,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                             <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                               u.role === 'dealer' ? 'bg-blue-50 text-blue-600' : u.role === 'super_admin' ? 'bg-purple-50 text-purple-600' : 'bg-gray-100 text-gray-500'
                             }`}>
-                              {u.role}
+                              {ROLE_LABELS[u.role || 'user'] || u.role}
                             </span>
                           </td>
                           <td className="px-8 py-6">
                             {u.is_verified === -1 ? (
                               <span className="flex items-center gap-1 text-red-500 text-xs font-bold">
-                                <XCircle size={14} /> Banned
+                                <XCircle size={14} /> محظور
                               </span>
                             ) : u.is_verified ? (
                               <span className="flex items-center gap-1 text-emerald-500 text-xs font-bold">
-                                <CheckCircle size={14} /> Verified
+                                <CheckCircle size={14} /> موثق
                               </span>
                             ) : (
                               <span className="flex items-center gap-1 text-gray-400 text-xs font-bold">
-                                Unverified
+                                غير موثق
                               </span>
                             )}
                           </td>
                           <td className="px-8 py-6">
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => handleBanUser(u.id)} className="p-2 text-orange-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all" title="Ban">
+                              <button onClick={() => handleBanUser(u.id)} className="p-2 text-orange-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all" title="حظر">
                                 <Ban size={18} />
                               </button>
-                              <button onClick={() => handleDeleteUser(u.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
+                              <button onClick={() => handleDeleteUser(u.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="حذف">
                                 <Trash2 size={18} />
                               </button>
                             </div>
@@ -496,13 +535,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                       </div>
                       <div className="flex-1">
                         <div className="flex justify-between items-start mb-1">
-                          <h4 className="font-bold text-gray-900">{log.action}</h4>
+                          <h4 className="font-bold text-gray-900">{ACTION_LABELS[log.action] || log.action}</h4>
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                            {new Date(log.created_at).toLocaleString()}
+                            {new Date(log.created_at).toLocaleString('ar-EG')}
                           </span>
                         </div>
                         <p className="text-sm text-gray-500 font-medium">{log.details}</p>
-                        <p className="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-widest">By: {log.user_name || 'System'}</p>
+                        <p className="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-widest">بواسطة: {log.user_name || 'النظام'}</p>
                       </div>
                     </div>
                   ))}

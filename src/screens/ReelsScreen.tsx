@@ -91,18 +91,18 @@ export const ReelsScreen: React.FC<ReelsScreenProps> = ({ onCarClick, onDealerCl
 
   const handleShare = async (reel: Reel) => {
     const shareUrl = `${window.location.origin}/reels/${reel.id}`;
-    const carTitle = reel.make && reel.model ? `${reel.make} ${reel.model}` : 'Souq Cars';
+    const carTitle = reel.make && reel.model ? `${reel.make} ${reel.model}` : 'سوق السيارات';
 
     try {
       if (navigator.share) {
         await navigator.share({
           title: carTitle,
-          text: "Check this car on Souq Cars",
+          text: "شوف السيارة دي على سوق السيارات",
           url: shareUrl,
         });
       } else {
         await navigator.clipboard.writeText(shareUrl);
-        alert("Link copied");
+        alert("تم نسخ الرابط");
       }
     } catch (e) {
       if ((e as Error).name !== 'AbortError') {
@@ -153,7 +153,7 @@ export const ReelsScreen: React.FC<ReelsScreenProps> = ({ onCarClick, onDealerCl
               animate={i === activeIndex ? { opacity: 1, x: 0 } : {}}
             >
               <div className="flex items-center gap-3 mb-4">
-                <img src={reel.dealer_logo} className="w-10 h-10 rounded-full border border-white/20 object-cover" />
+                <img src={reel.dealer_logo} className="w-10 h-10 rounded-full border border-white/20 object-cover" loading="lazy" decoding="async" />
                 <span className="font-black text-sm shadow-sm">{reel.dealer_name}</span>
               </div>
               {reel.make && reel.model && (
@@ -162,7 +162,7 @@ export const ReelsScreen: React.FC<ReelsScreenProps> = ({ onCarClick, onDealerCl
               <p className="text-sm font-medium text-white/80 mb-4">{reel.caption}</p>
               <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md w-fit px-3 py-2 rounded-xl border border-white/10">
                 <Music2 size={14} />
-                <span className="text-xs font-bold">Original Audio</span>
+                <span className="text-xs font-bold">الصوت الأصلي</span>
               </div>
             </motion.div>
           </div>
