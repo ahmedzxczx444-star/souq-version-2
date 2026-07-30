@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { api } from "../services/api";
 import { User, Mail, Lock, ChevronRight, Phone, MapPin, Hash, Image as ImageIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { isValidEgyptLocalPhone, toEgyptE164 } from "../../phoneUtils";
 
 declare global {
   interface Window {
@@ -208,13 +209,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, t }) => {
         const res = await api.auth.login({ email, password, captchaToken });
         onSuccess(res.user, res.token);
       } else {
+        if (role === "dealer" && (!isValidEgyptLocalPhone(phone) || !isValidEgyptLocalPhone(whatsapp))) {
+          setError(t.invalidEgyptPhone);
+          setLoading(false);
+          return;
+        }
+
         const res = await api.auth.register({
           email,
           password,
           name,
           role,
-          phone,
-          whatsapp_number: whatsapp,
+          phone: role === "dealer" ? toEgyptE164(phone) : phone,
+          whatsapp_number: role === "dealer" ? toEgyptE164(whatsapp) : whatsapp,
           branches_count: parseInt(branches),
           address,
           latitude: parseFloat(latitude),
@@ -474,26 +481,36 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, t }) => {
                 animate={{ opacity: 1, height: "auto" }}
                 className="space-y-4 pt-4 border-t border-gray-100"
               >
-                <div className="relative">
-                  <Phone className="absolute ltr:left-4 rtl:right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
+                <div className="flex items-stretch bg-gray-50 border border-gray-100 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-black/5">
+                  <span className="flex items-center gap-2 ltr:pl-4 rtl:pr-4 px-3 text-sm font-bold text-gray-400 ltr:border-r rtl:border-l border-gray-200 select-none">
+                    <Phone size={20} className="text-gray-400" />
+                    +20
+                  </span>
                   <input
                     type="tel"
-                    placeholder="رقم الهاتف"
+                    inputMode="numeric"
+                    placeholder="1155336849"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    maxLength={10}
                     required
-                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 ltr:pl-12 ltr:pr-4 rtl:pr-12 rtl:pl-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-black/5 text-gray-900 placeholder:text-gray-400"
+                    className="flex-1 min-w-0 bg-transparent py-4 ltr:pr-4 ltr:pl-3 rtl:pl-4 rtl:pr-3 text-sm font-medium focus:outline-none text-gray-900 placeholder:text-gray-400"
                   />
                 </div>
-                <div className="relative">
-                  <Phone className="absolute ltr:left-4 rtl:right-4 top-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none" size={20} />
+                <div className="flex items-stretch bg-gray-50 border border-gray-100 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-black/5">
+                  <span className="flex items-center gap-2 ltr:pl-4 rtl:pr-4 px-3 text-sm font-bold text-gray-400 ltr:border-r rtl:border-l border-gray-200 select-none">
+                    <Phone size={20} className="text-emerald-500" />
+                    +20
+                  </span>
                   <input
                     type="tel"
-                    placeholder="رقم الواتساب"
+                    inputMode="numeric"
+                    placeholder="1155336849"
                     value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
+                    onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    maxLength={10}
                     required
-                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 ltr:pl-12 ltr:pr-4 rtl:pr-12 rtl:pl-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-black/5 text-gray-900 placeholder:text-gray-400"
+                    className="flex-1 min-w-0 bg-transparent py-4 ltr:pr-4 ltr:pl-3 rtl:pl-4 rtl:pr-3 text-sm font-medium focus:outline-none text-gray-900 placeholder:text-gray-400"
                   />
                 </div>
                 <div className="relative">

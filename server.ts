@@ -18,6 +18,7 @@ import xss from "xss-clean";
 import { GoogleGenAI, Type } from "@google/genai";
 import { searchCars } from "./searchEngine";
 import { initOtpService, sendOtp, verifyOtp, clearExpiredOtps } from "./services/otpService";
+import { isValidEgyptE164 } from "./phoneUtils";
 
 dotenv.config();
 
@@ -790,7 +791,21 @@ async function startServer() {
   app.put("/api/dealer/profile", authenticate, (req: any, res) => {
     if (req.user.role !== 'dealer') return res.status(403).json({ error: "Only dealers can access this" });
     const { name, logo, description, location, phone, whatsapp_number, address, map_location_link, branches } = req.body;
-    
+
+    if (!isValidEgyptE164(phone)) {
+      return res.status(400).json({ error: "Invalid phone number format" });
+    }
+    if (whatsapp_number && !isValidEgyptE164(whatsapp_number)) {
+      return res.status(400).json({ error: "Invalid WhatsApp number format" });
+    }
+    if (Array.isArray(branches)) {
+      for (const branch of branches) {
+        if (branch.phone && !isValidEgyptE164(branch.phone)) {
+          return res.status(400).json({ error: "Invalid branch phone number format" });
+        }
+      }
+    }
+
     const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(req.user.id) as any;
     if (!dealer) return res.status(404).json({ error: "Dealer not found" });
 
@@ -866,6 +881,9 @@ async function startServer() {
     }
     if (password.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+    if (role === 'dealer' && (!isValidEgyptE164(phone) || !isValidEgyptE164(whatsapp_number))) {
+      return res.status(400).json({ error: "Phone and WhatsApp numbers must be a valid Egyptian mobile number (e.g. +201012345678)" });
     }
 
     // reCAPTCHA verification

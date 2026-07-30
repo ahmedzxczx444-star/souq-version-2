@@ -23,6 +23,7 @@ export interface Car {
   dealer_logo?: string;
   dealer_location?: string;
   dealer_phone?: string;
+  dealer_whatsapp?: string;
   dealer_user_id?: number;
 }
 

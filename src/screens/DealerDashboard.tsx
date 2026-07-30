@@ -5,6 +5,7 @@ import { subscriptionsEnabled } from "../constants/config";
 import { PromoteButton } from "../components/PromoteButton";
 import { Car, User as UserType, Dealer } from "../types";
 import { motion, AnimatePresence } from "motion/react";
+import { isValidEgyptLocalPhone, toEgyptE164, extractEgyptLocalPhone } from "../../phoneUtils";
 
 interface DealerDashboardProps {
   user: UserType;
@@ -54,7 +55,15 @@ export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, 
   const fetchDealerProfile = async () => {
     try {
       const data = await api.dealers.getProfile();
-      setDealerProfile(data);
+      setDealerProfile({
+        ...data,
+        phone: extractEgyptLocalPhone(data.phone),
+        whatsapp_number: extractEgyptLocalPhone(data.whatsapp_number),
+        branches: (data.branches || []).map((b: any) => ({
+          ...b,
+          phone: b.phone ? extractEgyptLocalPhone(b.phone) : b.phone,
+        })),
+      });
     } catch (error) {
       console.error("Failed to fetch dealer profile:", error);
     }
@@ -105,9 +114,33 @@ export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dealerProfile) return;
+
+    if (!isValidEgyptLocalPhone(dealerProfile.phone)) {
+      alert(t.invalidEgyptPhone);
+      return;
+    }
+    if (dealerProfile.whatsapp_number && !isValidEgyptLocalPhone(dealerProfile.whatsapp_number)) {
+      alert(t.invalidEgyptPhone);
+      return;
+    }
+    for (const branch of dealerProfile.branches || []) {
+      if (branch.phone && !isValidEgyptLocalPhone(branch.phone)) {
+        alert(t.invalidEgyptPhone);
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
-      await api.dealers.updateProfile(dealerProfile);
+      await api.dealers.updateProfile({
+        ...dealerProfile,
+        phone: toEgyptE164(dealerProfile.phone),
+        whatsapp_number: dealerProfile.whatsapp_number ? toEgyptE164(dealerProfile.whatsapp_number) : dealerProfile.whatsapp_number,
+        branches: dealerProfile.branches?.map((b) => ({
+          ...b,
+          phone: b.phone ? toEgyptE164(b.phone) : b.phone,
+        })),
+      });
       alert("تم تحديث الملف الشخصي بنجاح");
     } catch (error) {
       console.error("Failed to update profile:", error);
@@ -352,22 +385,33 @@ export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, 
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">رقم الهاتف</label>
-                    <input
-                      type="text"
-                      value={dealerProfile.phone}
-                      onChange={(e) => setDealerProfile({ ...dealerProfile, phone: e.target.value })}
-                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/5"
-                    />
+                    <div className="flex items-stretch bg-gray-50 border border-gray-100 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-black/5">
+                      <span className="flex items-center px-4 font-bold text-gray-400 ltr:border-r rtl:border-l border-gray-200 select-none">+20</span>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        placeholder="1155336849"
+                        value={dealerProfile.phone}
+                        onChange={(e) => setDealerProfile({ ...dealerProfile, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                        className="flex-1 min-w-0 bg-transparent px-4 py-3 font-bold text-gray-900 focus:outline-none"
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">رقم الواتساب</label>
-                    <input
-                      type="text"
-                      value={dealerProfile.whatsapp_number || ""}
-                      onChange={(e) => setDealerProfile({ ...dealerProfile, whatsapp_number: e.target.value })}
-                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/5"
-                      placeholder="مثال: 201234567890"
-                    />
+                    <div className="flex items-stretch bg-gray-50 border border-gray-100 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-black/5">
+                      <span className="flex items-center px-4 font-bold text-gray-400 ltr:border-r rtl:border-l border-gray-200 select-none">+20</span>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        placeholder="1155336849"
+                        value={dealerProfile.whatsapp_number || ""}
+                        onChange={(e) => setDealerProfile({ ...dealerProfile, whatsapp_number: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                        className="flex-1 min-w-0 bg-transparent px-4 py-3 font-bold text-gray-900 focus:outline-none"
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">العنوان</label>
@@ -457,12 +501,18 @@ export const DealerDashboard: React.FC<DealerDashboardProps> = ({ user, onBack, 
                               </div>
                               <div>
                                 <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">رقم الهاتف (اختياري)</label>
-                                <input
-                                  type="text"
-                                  value={branch.phone || ""}
-                                  onChange={(e) => updateBranch(index, 'phone', e.target.value)}
-                                  className="w-full bg-white border border-gray-100 rounded-xl px-3 py-2 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/5"
-                                />
+                                <div className="flex items-stretch bg-white border border-gray-100 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-black/5">
+                                  <span className="flex items-center px-3 text-sm font-bold text-gray-400 ltr:border-r rtl:border-l border-gray-100 select-none">+20</span>
+                                  <input
+                                    type="tel"
+                                    inputMode="numeric"
+                                    maxLength={10}
+                                    placeholder="1155336849"
+                                    value={branch.phone || ""}
+                                    onChange={(e) => updateBranch(index, 'phone', e.target.value.replace(/\D/g, "").slice(0, 10))}
+                                    className="flex-1 min-w-0 bg-white px-3 py-2 text-sm font-bold text-gray-900 focus:outline-none"
+                                  />
+                                </div>
                               </div>
                             </div>
                           </div>

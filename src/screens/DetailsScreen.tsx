@@ -3,6 +3,7 @@ import { Car, Dealer, User } from "../types";
 import { api } from "../services/api";
 import { ChevronLeft, Heart, Share2, MapPin, Phone, Info, Calendar, Gauge, Fuel, Settings2, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { toWhatsappLink } from "../../phoneUtils";
 
 interface DetailsScreenProps {
   carId: number;
@@ -208,19 +209,25 @@ ${carUrl}`;
 
       {/* Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 p-6 flex gap-4 z-50">
-        <a 
-          href={`https://wa.me/${car.dealer_whatsapp}?text=${encodeURIComponent(`السلام عليكم، أنا مهتم بسيارة ${car.make} ${car.model} ${car.year} موديل الموجودة على سوق السيارات.
+        {(() => {
+          const whatsappLink = toWhatsappLink(car.dealer_whatsapp);
+          if (!whatsappLink) return null;
+          return (
+            <a
+              href={`${whatsappLink}?text=${encodeURIComponent(`السلام عليكم، أنا مهتم بسيارة ${car.make} ${car.model} ${car.year} موديل الموجودة على سوق السيارات.
 السعر: ${car.price.toLocaleString()} ج.م
 الرابط: ${window.location.origin}/car/${car.id}
 الصورة: ${car.images[0]}`)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-1 bg-emerald-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
-        >
-          <MessageCircle size={20} />
-          💬 واتساب
-        </a>
-        <a 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 bg-emerald-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+            >
+              <MessageCircle size={20} />
+              💬 واتساب
+            </a>
+          );
+        })()}
+        <a
           href={`tel:${car.dealer_phone}`}
           className="flex-1 bg-black text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-black/20"
         >

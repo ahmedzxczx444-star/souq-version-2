@@ -53,7 +53,8 @@
       "Bash(kill -9 990)",
       "Bash(taskkill //F //PID 1290)",
       "Bash(ls -la \"/c/Users/Acer/AppData/Local/Temp/claude/D--souq-version-2-git/694ce843-ee58-4d12-9cdc-498b3cb2c8e0/\")",
-      "Bash(curl -s -X POST http://localhost:3000/api/auth/verify-otp -H 'Content-Type: application/json' -d '{\"email\":\"__CMDSUB_OUTPUT__\",\"otp\":\"177483\",\"purpose\":\"register\"}')"
+      "Bash(curl -s -X POST http://localhost:3000/api/auth/verify-otp -H 'Content-Type: application/json' -d '{\"email\":\"__CMDSUB_OUTPUT__\",\"otp\":\"177483\",\"purpose\":\"register\"}')",
+      "Bash(npx tsx -e ' *)"
     ]
   }
 }
