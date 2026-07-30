@@ -38,7 +38,22 @@
       "Bash(curl -sv http://localhost:3000/)",
       "Bash(curl -s \"http://localhost:3000/src/screens/HomeScreen.tsx\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code} %{content_type} %{size_download} bytes\\\\n\" \"http://localhost:3000/src/assets/hero.jpg?import\")",
-      "Bash(curl -s -o /dev/null -w \"%{http_code} %{content_type} %{size_download} bytes\\\\n\" \"http://localhost:3000/src/assets/hero.jpg\")"
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{content_type} %{size_download} bytes\\\\n\" \"http://localhost:3000/src/assets/hero.jpg\")",
+      "Bash(grep -iE \"^axios$|node-fetch\")",
+      "Bash(echo \"exit=$?\")",
+      "Bash(git show *)",
+      "Read(//tmp/**)",
+      "Bash(grep -n \"Auth Routes\\\\|api/auth/register\\\\|api/auth/send-otp\\\\|api/auth/resend-otp\\\\|api/auth/verify-otp\\\\|api/auth/forgot-password\\\\|api/auth/reset-password\\\\|api/auth/login\\\\\"\" /tmp/server_old.ts)",
+      "Bash(cygpath -w /tmp/server_old.ts)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npx tsc --noEmit)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/api/products)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP:%{http_code}\\\\n\" http://localhost:3000/api/products --max-time 5)",
+      "Bash(cat /tmp/server.log | grep -i \"OTP\\\\|EMAIL SIMULATION\\\\|Brevo\" ; echo \"---full tail---\"; tail -40 /tmp/server.log)",
+      "Bash(kill -9 990)",
+      "Bash(taskkill //F //PID 1290)",
+      "Bash(ls -la \"/c/Users/Acer/AppData/Local/Temp/claude/D--souq-version-2-git/694ce843-ee58-4d12-9cdc-498b3cb2c8e0/\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/auth/verify-otp -H 'Content-Type: application/json' -d '{\"email\":\"__CMDSUB_OUTPUT__\",\"otp\":\"177483\",\"purpose\":\"register\"}')"
     ]
   }
 }

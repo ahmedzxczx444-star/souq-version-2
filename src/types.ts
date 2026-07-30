@@ -114,5 +114,4 @@ export interface ActivityLog {
 export interface AuthResponse {
   token: string;
   user: User;
-  requiresVerification?: boolean;
 }
