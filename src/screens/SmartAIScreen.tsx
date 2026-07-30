@@ -29,13 +29,17 @@ export const SmartAIScreen: React.FC<SmartAIScreenProps> = ({
   user 
 }) => {
   const [messages, setMessages] = useState<Message[]>([
-    { 
-      role: "assistant", 
-      content: "مرحباً بك في سوق السيارات الذكي! أنا مساعدك الشخصي المدعوم بالذكاء الاصطناعي. كيف يمكنني مساعدتك اليوم في العثور على سيارة أحلامك؟" 
+    {
+      role: "assistant",
+      content: "مرحباً بك في سوق السيارات الذكي! أنا مساعدك الشخصي المدعوم بالذكاء الاصطناعي. كيف يمكنني مساعدتك اليوم في العثور على سيارة أحلامك؟"
     }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  // Conversation memory: entities collected across turns (budget, make, city, ...).
+  // The server is stateless - this is resent every turn and replaced with the
+  // server's merged copy on each response, so the AI never re-asks known info.
+  const [slots, setSlots] = useState<Record<string, any>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,11 +51,18 @@ export const SmartAIScreen: React.FC<SmartAIScreenProps> = ({
 
     const userMessage = input.trim();
     setInput("");
+    // History sent to the server is text-only (role/content) - full Car objects on
+    // past messages must never be included, or the payload grows unboundedly per turn.
+    const history = messages.slice(-10).map(({ role, content }) => ({ role, content }));
     setMessages(prev => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
     try {
-      const result = await api.aiSearch.chat(userMessage);
+      const result = await api.aiSearch.chat(userMessage, history, slots);
+
+      // Defensive merge: on a transient failure the server still echoes back the
+      // previous slots, but never blindly trust an absent field over what we already have.
+      setSlots(result.slots ?? slots);
 
       setMessages(prev => [...prev, {
         role: "assistant",
@@ -108,22 +119,55 @@ export const SmartAIScreen: React.FC<SmartAIScreenProps> = ({
             
             {msg.cars && msg.cars.length > 0 && (
               <div className="mt-4 w-full grid grid-cols-1 gap-4">
-                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-2">السيارات المقترحة من المعرض:</p>
-                {msg.cars.map(car => (
-                  <div key={car.id} className="w-full">
-                    <CarCard
-                      car={car}
-                      onClick={() => onCarClick(car)}
-                      isFavorite={favorites.includes(car.id)}
-                      onFavoriteToggle={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(car.id);
-                      }}
-                      t={t}
-                      variant="feed"
-                    />
-                  </div>
-                ))}
+                {msg.cars.some(car => car.comparisonGroup) ? (
+                  <>
+                    {(["a", "b"] as const).map(group => {
+                      const groupCars = msg.cars!.filter(car => car.comparisonGroup === group);
+                      if (groupCars.length === 0) return null;
+                      return (
+                        <div key={group} className="space-y-4">
+                          <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-2">
+                            {group === "a" ? "الخيار الأول:" : "الخيار الثاني:"}
+                          </p>
+                          {groupCars.map(car => (
+                            <div key={car.id} className="w-full">
+                              <CarCard
+                                car={car}
+                                onClick={() => onCarClick(car)}
+                                isFavorite={favorites.includes(car.id)}
+                                onFavoriteToggle={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(car.id);
+                                }}
+                                t={t}
+                                variant="feed"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-2">السيارات المقترحة من المعرض:</p>
+                    {msg.cars.map(car => (
+                      <div key={car.id} className="w-full">
+                        <CarCard
+                          car={car}
+                          onClick={() => onCarClick(car)}
+                          isFavorite={favorites.includes(car.id)}
+                          onFavoriteToggle={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(car.id);
+                          }}
+                          t={t}
+                          variant="feed"
+                        />
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             )}
           </div>

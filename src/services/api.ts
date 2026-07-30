@@ -157,11 +157,15 @@ export const api = {
     },
   },
   aiSearch: {
-    chat: async (message: string): Promise<{ text: string; cars: Car[] }> => {
+    chat: async (
+      message: string,
+      history: { role: "user" | "assistant"; content: string }[],
+      slots: Record<string, any>
+    ): Promise<{ text: string; cars: Car[]; slots: Record<string, any>; intent: string; confidence: number; done: boolean }> => {
       const res = await fetch(`${API_BASE}/ai-search/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, history, slots }),
       });
       if (!res.ok) throw new Error("AI search failed");
       return res.json();

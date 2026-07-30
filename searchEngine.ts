@@ -14,6 +14,15 @@ export interface SearchParsed {
   year?: number;
   family?: boolean;
   color?: string;
+  countryOfOrigin?: string;
+}
+
+// Ranking-only context that isn't derived from the query text itself (e.g. which
+// conversational intent triggered the search) - purely additive to scoring, never
+// used as a hard filter.
+export interface RankingContext {
+  fuelEconomyIntent?: boolean;
+  reliabilityIntent?: boolean;
 }
 
 export interface SearchOutcome {
@@ -134,6 +143,30 @@ const MAKE_SYNONYMS: Record<string, string[]> = {
   "Seat": ["سيات"],
   "Maserati": ["مازيراتي"],
 };
+
+// ---------- Country-of-origin lookup (derived from brand, no DB column exists) ----------
+// General-knowledge mapping, not measured data. Used both to let the AI chat filter
+// on phrases like "German car" and to ground the LLM's own entity extraction.
+
+export const BRAND_COUNTRY_MAP: Record<string, string> = {
+  "BMW": "German", "Mercedes-Benz": "German", "Audi": "German", "Volkswagen": "German",
+  "Porsche": "German", "Opel": "German",
+  "Toyota": "Japanese", "Honda": "Japanese", "Nissan": "Japanese", "Mazda": "Japanese",
+  "Mitsubishi": "Japanese", "Suzuki": "Japanese",
+  "Hyundai": "Korean", "Kia": "Korean",
+  "Ford": "American", "Chevrolet": "American", "Jeep": "American",
+  "Rolls-Royce": "British", "Bentley": "British",
+  "Peugeot": "French", "Renault": "French",
+  "Fiat": "Italian", "Ferrari": "Italian", "Lamborghini": "Italian", "Maserati": "Italian",
+  "Skoda": "Czech", "Seat": "Spanish",
+  "MG": "Chinese", "Chery": "Chinese", "Geely": "Chinese",
+};
+
+// Soft reliability-reputation heuristic for ranking only (never a hard filter, never
+// implies other brands are "unreliable") - general automotive reputation, not measured data.
+export const RELIABLE_BRANDS = new Set([
+  "Toyota", "Honda", "Hyundai", "Kia", "Mazda", "Suzuki", "Nissan",
+]);
 
 // ---------- Model synonym dictionary (Arabic transliterations -> canonical model text) ----------
 
@@ -403,11 +436,14 @@ function carMatchesHardFilters(car: any, parsed: SearchParsed, opts: { relaxed: 
   if (parsed.bodyType === "suv" && !opts.relaxed.has("bodyType")) {
     if (bodyType !== "suv") return false;
   }
+  if (parsed.countryOfOrigin && !opts.relaxed.has("countryOfOrigin")) {
+    if (BRAND_COUNTRY_MAP[car.make || ""] !== parsed.countryOfOrigin) return false;
+  }
 
   return true;
 }
 
-function scoreCar(car: any, parsed: SearchParsed, freeTokens: string[]): { score: number; signal: boolean } {
+function scoreCar(car: any, parsed: SearchParsed, freeTokens: string[], rankingContext?: RankingContext): { score: number; signal: boolean } {
   let score = 0;
   let signal = false;
   const make = normalizeText(car.make || "");
@@ -450,33 +486,45 @@ function scoreCar(car: any, parsed: SearchParsed, freeTokens: string[]): { score
   // mild affordability nudge so generic/broad queries don't default-rank the priciest cars first
   score -= (Number(car.price) || 0) / 100_000_000;
 
+  // Dealer rating (0-5 scale -> up to +5): only applied when the caller passes a
+  // rankingContext at all (i.e. the conversational AI pipeline via searchCarsByFilters).
+  // The plain free-text searchCars()/`/api/search` path never passes one, so its
+  // ranking stays exactly as it was before this ranking engine was added.
+  if (rankingContext) {
+    const dealerRating = Number(car.dealer_rating) || 0;
+    if (dealerRating > 0) score += dealerRating;
+  }
+
+  // soft heuristics for conversational intents that have no real DB metric to filter on
+  if (rankingContext?.fuelEconomyIntent) {
+    const fuel = normalizeText(car.fuel_type || "");
+    if (fuel.includes("هايبرد") || fuel.includes("hybrid") || fuel.includes("كهرباء") || fuel.includes("electric")) {
+      score += 10;
+    }
+  }
+  if (rankingContext?.reliabilityIntent && RELIABLE_BRANDS.has(car.make)) {
+    score += 10;
+  }
+
   return { score, signal };
 }
 
 // ---------- Main entry point ----------
 
-export function searchCars(cars: any[], rawQuery: string): SearchOutcome {
-  const trimmed = (rawQuery || "").trim();
+const RELAXATION_ORDER = ["price", "city", "bodyType", "countryOfOrigin", "transmission", "fuel", "model", "make"];
 
-  if (!trimmed) {
-    const latest = [...cars]
-      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-      .slice(0, 20);
-    return { cars: latest, noExactMatch: false, emptyQuery: true, parsed: {} };
-  }
-
-  const parsed = parseQuery(trimmed);
-  const freeTokens = tokenize(trimmed).filter((t) => !STOPWORDS.has(t));
+// Shared tail: everything from here on operates purely on (cars, parsed, freeTokens) -
+// no dependency on the original raw query string. Used by both the free-text entry
+// point (searchCars) and the structured entry point (searchCarsByFilters) below.
+function searchByParsed(cars: any[], parsed: SearchParsed, freeTokens: string[], rankingContext?: RankingContext): SearchOutcome {
   const hasStructuredFilter = Object.keys(parsed).length > 0;
-
-  const relaxationOrder = ["price", "city", "bodyType", "transmission", "fuel", "model", "make"];
   const relaxed = new Set<string>();
 
   let filtered = cars.filter((c) => carMatchesHardFilters(c, parsed, { relaxed }));
   let noExactMatch = false;
 
   if (filtered.length === 0 && hasStructuredFilter) {
-    for (const field of relaxationOrder) {
+    for (const field of RELAXATION_ORDER) {
       relaxed.add(field);
       filtered = cars.filter((c) => carMatchesHardFilters(c, parsed, { relaxed }));
       if (filtered.length > 0) {
@@ -490,7 +538,7 @@ export function searchCars(cars: any[], rawQuery: string): SearchOutcome {
   // free-text relevance signal, never silently return the whole catalog as "matches".
   if (!hasStructuredFilter) {
     const scored = filtered
-      .map((c) => ({ c, ...scoreCar(c, parsed, freeTokens) }))
+      .map((c) => ({ c, ...scoreCar(c, parsed, freeTokens, rankingContext) }))
       .filter((x) => x.signal)
       .sort((a, b) => b.score - a.score)
       .map((x) => x.c);
@@ -501,7 +549,7 @@ export function searchCars(cars: any[], rawQuery: string): SearchOutcome {
 
     // Nothing relevant at all: surface a small set of popular picks as suggestions.
     const suggestions = [...cars]
-      .map((c) => ({ c, ...scoreCar(c, {}, []) }))
+      .map((c) => ({ c, ...scoreCar(c, {}, [], rankingContext) }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 6)
       .map((x) => x.c);
@@ -509,9 +557,37 @@ export function searchCars(cars: any[], rawQuery: string): SearchOutcome {
   }
 
   const scored = filtered
-    .map((c) => ({ c, ...scoreCar(c, parsed, freeTokens) }))
+    .map((c) => ({ c, ...scoreCar(c, parsed, freeTokens, rankingContext) }))
     .sort((a, b) => b.score - a.score)
     .map((x) => x.c);
 
   return { cars: scored, noExactMatch, emptyQuery: false, parsed };
+}
+
+export function searchCars(cars: any[], rawQuery: string): SearchOutcome {
+  const trimmed = (rawQuery || "").trim();
+
+  if (!trimmed) {
+    const latest = [...cars]
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 20);
+    return { cars: latest, noExactMatch: false, emptyQuery: true, parsed: {} };
+  }
+
+  const parsed = parseQuery(trimmed);
+  const freeTokens = tokenize(trimmed).filter((t) => !STOPWORDS.has(t));
+  return searchByParsed(cars, parsed, freeTokens);
+}
+
+// Structured entry point for callers that already have extracted entities (e.g. the
+// conversational AI agent's merged conversation slots) instead of a raw query string.
+// Reuses the exact same filtering/scoring/relaxation logic as searchCars.
+export function searchCarsByFilters(cars: any[], parsed: SearchParsed, rankingContext?: RankingContext): SearchOutcome {
+  if (Object.keys(parsed).length === 0) {
+    const latest = [...cars]
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 20);
+    return { cars: latest, noExactMatch: false, emptyQuery: true, parsed: {} };
+  }
+  return searchByParsed(cars, parsed, [], rankingContext);
 }

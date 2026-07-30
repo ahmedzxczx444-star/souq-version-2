@@ -25,6 +25,8 @@ export interface Car {
   dealer_phone?: string;
   dealer_whatsapp?: string;
   dealer_user_id?: number;
+  dealer_rating?: number;
+  comparisonGroup?: "a" | "b";
 }
 
 export interface Branch {

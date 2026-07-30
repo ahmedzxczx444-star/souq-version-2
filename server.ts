@@ -16,7 +16,7 @@ import { rateLimit } from "express-rate-limit";
 import validator from "validator";
 import xss from "xss-clean";
 import { GoogleGenAI, Type } from "@google/genai";
-import { searchCars } from "./searchEngine";
+import { searchCars, searchCarsByFilters, SearchParsed, BRAND_COUNTRY_MAP } from "./searchEngine";
 import { initOtpService, sendOtp, verifyOtp, clearExpiredOtps } from "./services/otpService";
 import { isValidEgyptE164 } from "./phoneUtils";
 
@@ -515,6 +515,7 @@ async function startServer() {
         dealers.logo as dealer_logo,
         dealers.location as dealer_location,
         dealers.user_id as dealer_user_id,
+        dealers.rating as dealer_rating,
         COALESCE(users.plan, 'free') as user_plan,
         (SELECT COUNT(*) FROM favorites WHERE car_id = cars.id) as favorites_count
       FROM cars
@@ -605,68 +606,292 @@ async function startServer() {
     return `لقيت لك ${outcome.cars.length} سيارة تناسب طلبك:`;
   };
 
+  // ---------- Conversational AI agent: intent classification + entity memory ----------
+
+  interface ChatSlots {
+    make?: string;
+    model?: string;
+    generation?: string;
+    year?: number;
+    minPrice?: number;
+    maxPrice?: number;
+    city?: string;
+    bodyType?: string;
+    condition?: string;
+    fuelType?: string;
+    seats?: number;
+    transmission?: string;
+    countryOfOrigin?: string;
+  }
+
+  const CHAT_INTENTS = ["direct_search", "consultant", "comparison", "price_inquiry", "reliability_inquiry", "fuel_economy_inquiry"] as const;
+  type ChatIntent = typeof CHAT_INTENTS[number];
+  const CURRENT_YEAR = new Date().getFullYear();
+
+  // Merge new (possibly partial/null) slots over the previously known ones. A field the
+  // model omits or returns null must never erase a value the user already gave earlier.
+  // Numeric fields are bound-checked so an implausible model output (e.g. minPrice: 0)
+  // can't silently corrupt the conversation's memory.
+  function mergeSlots(prev: ChatSlots, next: any): ChatSlots {
+    const merged: ChatSlots = { ...prev };
+    if (!next || typeof next !== "object") return merged;
+
+    const setStr = (key: keyof ChatSlots) => {
+      const v = next[key];
+      if (typeof v === "string" && v.trim()) (merged as any)[key] = v.trim();
+    };
+    const setNum = (key: keyof ChatSlots, min: number, max: number) => {
+      const v = Number(next[key]);
+      if (!isNaN(v) && v >= min && v <= max) (merged as any)[key] = v;
+    };
+
+    setStr("make"); setStr("model"); setStr("generation"); setStr("city");
+    setStr("bodyType"); setStr("condition"); setStr("fuelType"); setStr("transmission");
+    setStr("countryOfOrigin");
+    setNum("year", 1980, CURRENT_YEAR + 1);
+    setNum("minPrice", 1, 500_000_000);
+    setNum("maxPrice", 1, 500_000_000);
+    setNum("seats", 2, 9);
+
+    return merged;
+  }
+
+  // Explicit allowlist mapping (never a blind spread) - slot keys with no real DB
+  // backing (generation/condition/seats) are intentionally NOT copied into the filter,
+  // they stay in conversation memory only.
+  function slotsToSearchParsed(slots: ChatSlots): SearchParsed {
+    const parsed: SearchParsed = {};
+    if (slots.make) parsed.make = slots.make;
+    if (slots.model) parsed.model = slots.model;
+    if (slots.city) parsed.city = slots.city;
+    if (slots.minPrice !== undefined) parsed.minPrice = slots.minPrice;
+    if (slots.maxPrice !== undefined) parsed.maxPrice = slots.maxPrice;
+    if (slots.transmission) parsed.transmission = slots.transmission;
+    if (slots.fuelType) parsed.fuel = slots.fuelType;
+    if (slots.bodyType) parsed.bodyType = slots.bodyType;
+    if (slots.year !== undefined) parsed.year = slots.year;
+    if (slots.countryOfOrigin) parsed.countryOfOrigin = slots.countryOfOrigin;
+    return parsed;
+  }
+
+  const carContextOf = (candidates: any[]) => candidates.map((c: any) => ({
+    id: c.id, make: c.make, model: c.model, year: c.year, price: c.price,
+    mileage: c.mileage, location: c.location, fuel_type: c.fuel_type,
+    transmission: c.transmission, status: c.status,
+  }));
+
+  const UNDERSTAND_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+      intent: { type: Type.STRING, enum: CHAT_INTENTS as unknown as string[] },
+      confidence: { type: Type.INTEGER },
+      slots: {
+        type: Type.OBJECT,
+        properties: {
+          make: { type: Type.STRING },
+          model: { type: Type.STRING },
+          generation: { type: Type.STRING },
+          year: { type: Type.INTEGER },
+          minPrice: { type: Type.NUMBER },
+          maxPrice: { type: Type.NUMBER },
+          city: { type: Type.STRING },
+          bodyType: { type: Type.STRING },
+          condition: { type: Type.STRING },
+          fuelType: { type: Type.STRING },
+          seats: { type: Type.INTEGER },
+          transmission: { type: Type.STRING },
+          countryOfOrigin: { type: Type.STRING },
+        },
+      },
+      comparisonTargets: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: { make: { type: Type.STRING }, model: { type: Type.STRING } },
+          required: ["make", "model"],
+        },
+      },
+      followUpQuestion: { type: Type.STRING },
+    },
+    required: ["intent", "confidence", "slots"],
+  };
+
+  function buildUnderstandPrompt(message: string, history: { role: string; content: string }[], knownSlots: ChatSlots): string {
+    const countryList = Object.entries(BRAND_COUNTRY_MAP).map(([make, country]) => `${make}=${country}`).join(", ");
+    return `
+انت محرك فهم نوايا لمساعد سيارات ذكي محترف. مهمتك تصنيف رسالة المستخدم إلى فئة واحدة بالظبط من 6، واستخراج كل المعلومات الممكنة، وتقييم مدى ثقتك.
+
+الفئات الست:
+- direct_search: طلب واضح ومحدد (ماركة/موديل/سنة/سعر واضحين).
+- consultant: طلب غير مكتمل يحتاج أسئلة توضيحية (مثلاً "عايز عربية عيلة" من غير تفاصيل كافية).
+- comparison: مقارنة بين سيارتين محددتين بالاسم.
+- price_inquiry: سؤال عن سعر سيارة محددة.
+- reliability_inquiry: سؤال عن موثوقية/أعطال سيارة محددة.
+- fuel_economy_inquiry: سؤال عن استهلاك الوقود لسيارة محددة.
+
+معلومات معروفة بالفعل من المحادثة (لا تسأل عنها تاني، واحتفظ بيها كاملة في ردك): ${JSON.stringify(knownSlots)}
+آخر رسائل من المحادثة: ${JSON.stringify(history)}
+رسالة المستخدم الجديدة: "${message}"
+خريطة بلد المنشأ حسب الماركة (استخدمها لفهم عبارات زي "عربية ألمانية"): ${countryList}
+
+التعليمات:
+1. ادمج المعلومات الجديدة مع المعروفة بالفعل في حقل slots، ورجّع كل الحقول المعروفة مش بس الجديدة.
+2. لو الفئة consultant والثقة أقل من 90: اسأل سؤال واحد طبيعي فقط عن أهم معلومة ناقصة (الميزانية، جديدة أو مستعملة، سيدان أو SUV، السنة المفضلة، نوع الوقود، عدد المقاعد، المدينة). لا تسأل عن حاجة معروفة بالفعل.
+3. لو الفئة comparison: حدد السيارتين بالظبط في comparisonTargets.
+4. الثقة (confidence) رقم من 0 إلى 100: كل ما المعلومات أوضح وأدق (ماركة وموديل معروفين بدقة) كل ما الثقة أعلى؛ عبارات عامة وغامضة تدّي ثقة واطية.
+5. افهم الأخطاء الإملائية واللغة المختلطة (عربي/إنجليزي/عامية مصرية) بشكل طبيعي.
+`;
+  }
+
+  const RESPOND_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+      text: { type: Type.STRING },
+      matchedCarIds: { type: Type.ARRAY, items: { type: Type.INTEGER } },
+    },
+    required: ["text", "matchedCarIds"],
+  };
+
+  // Mode-specific instructions for the "respond" call - retrieval/grounding is already
+  // done deterministically by searchCarsByFilters; this call only phrases the reply.
+  function buildRespondPrompt(intent: ChatIntent, message: string, carContext: any[]): string {
+    const base = `انت مساعد ذكي متخصص في السيارات لسوق سيارات مصري اسمه "سوق السيارات". رد باللهجة المصرية أو العربية الفصحى البسيطة، بشكل ودود ومختصر واحترافي، زي خبير سيارات حقيقي.
+السيارات المرشحة (مرشحة مسبقًا من قاعدة البيانات الفعلية، لا تخترع سيارات غير موجودة فيها): ${JSON.stringify(carContext)}
+رسالة المستخدم: "${message}"`;
+
+    const modeInstructions: Record<ChatIntent, string> = {
+      direct_search: `التعليمات: اذكر فقط سيارات من القائمة أعلاه. لو القائمة فاضية قل ذلك بوضوح واقترح تعديل الطلب (ميزانية أو موديل مختلف).`,
+      consultant: `التعليمات: اذكر فقط سيارات من القائمة أعلاه بناءً على تفضيلات المستخدم اللي جمعناها.`,
+      comparison: `التعليمات: قارن بين السيارتين المطلوبتين بناءً على القائمة أعلاه فقط (السعر، الحالة، المواصفات المتاحة). لو مفيش سيارة متاحة فعليًا لأحد الطرفين، وضّح ذلك بدل ما تخترع.`,
+      price_inquiry: `التعليمات: ركّز ردك على نطاق السعر الفعلي الموجود في القائمة أعلاه لهذه السيارة، من غير اختراع أرقام غير موجودة.`,
+      reliability_inquiry: `التعليمات: قدّم رأي عام معروف عن موثوقية هذا الموديل بصفتك خبير سيارات (معرفة عامة عن السوق، مش بيانات مقاسة من قاعدة البيانات)، ثم اذكر لو فيه سيارات متاحة فعليًا من القائمة أعلاه.`,
+      fuel_economy_inquiry: `التعليمات: قدّم رأي عام معروف عن استهلاك الوقود لهذا الموديل بصفتك خبير سيارات (معرفة عامة عن السوق، مش بيانات مقاسة من قاعدة البيانات)، ثم اذكر لو فيه سيارات متاحة فعليًا من القائمة أعلاه.`,
+    };
+
+    return `${base}\n${modeInstructions[intent]}\nرجّع الرد بصيغة JSON بحقلين فقط: "text" (ردك النصي) و"matchedCarIds" (مصفوفة IDs من القائمة المرشحة فقط).`;
+  }
+
+  async function respondWithCandidates(intent: ChatIntent, message: string, candidates: any[]): Promise<{ text: string; matchedCarIds: number[] } | null> {
+    if (!genAI) return null;
+    try {
+      const response = await genAI.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ role: "user", parts: [{ text: buildRespondPrompt(intent, message, carContextOf(candidates)) }] }],
+        config: { responseMimeType: "application/json", responseSchema: RESPOND_SCHEMA },
+      });
+      const parsed = JSON.parse(response.text as string);
+      if (typeof parsed.text !== "string") return null;
+      return { text: parsed.text, matchedCarIds: Array.isArray(parsed.matchedCarIds) ? parsed.matchedCarIds : [] };
+    } catch (e) {
+      console.error("AI search respond-call error:", e);
+      return null;
+    }
+  }
+
   app.post("/api/ai-search/chat", async (req, res) => {
     const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
     if (!message) return res.status(400).json({ error: "الرسالة مطلوبة" });
 
-    const allCars = getActiveCars();
-    const outcome = searchCars(allCars, message);
-    const candidates = outcome.cars.slice(0, 15);
+    const rawHistory = Array.isArray(req.body?.history) ? req.body.history : [];
+    const history = rawHistory
+      .filter((h: any) => h && (h.role === "user" || h.role === "assistant") && typeof h.content === "string")
+      .slice(-10)
+      .map((h: any) => ({ role: h.role, content: String(h.content).slice(0, 500) }));
 
-    // Deterministic fallback path (no API key configured, or model call fails)
-    const fallback = () => {
-      const cars = candidates.slice(0, 6);
-      res.json({ text: buildDeterministicReply(outcome), cars });
+    const prevSlots: ChatSlots = (req.body?.slots && typeof req.body.slots === "object") ? req.body.slots : {};
+
+    const allCars = getActiveCars();
+
+    // Deterministic fallback path: used when no API key is configured, and on any
+    // transient failure of the "understand" call below. Always echoes back slots so a
+    // temporary failure never silently wipes the conversation's accumulated memory.
+    const fallbackDirectSearch = () => {
+      const outcome = searchCars(allCars, message);
+      res.json({
+        text: buildDeterministicReply(outcome),
+        cars: outcome.cars.slice(0, 6),
+        slots: prevSlots,
+        intent: "direct_search",
+        confidence: 100,
+        done: true,
+      });
     };
 
-    if (!genAI) return fallback();
+    if (!genAI) return fallbackDirectSearch();
 
     try {
-      const carContext = candidates.map((c: any) => ({
-        id: c.id, make: c.make, model: c.model, year: c.year, price: c.price,
-        mileage: c.mileage, location: c.location, fuel_type: c.fuel_type,
-        transmission: c.transmission, status: c.status,
-      }));
-
-      const response = await genAI.models.generateContent({
+      const understandResponse = await genAI.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: [{
-          role: "user",
-          parts: [{ text: `
-            انت مساعد ذكي لسوق سيارات مصري اسمه "سوق السيارات". مهمتك مساعدة المستخدمين في العثور على سيارة مناسبة بالعربية.
-
-            السيارات المرشحة (تم ترشيحها مسبقًا حسب طلب المستخدم من قاعدة البيانات الفعلية): ${JSON.stringify(carContext)}
-            طلب المستخدم: "${message}"
-
-            التعليمات:
-            1. رد باللهجة المصرية أو العربية الفصحى البسيطة، بشكل ودود ومختصر.
-            2. اذكر فقط سيارات موجودة فعلاً في القائمة المرشحة أعلاه، ولا تخترع سيارات غير موجودة.
-            3. لو مفيش سيارات مرشحة أصلاً، قل ذلك بوضوح واقترح تعديل الطلب (ميزانية أو موديل مختلف).
-            4. رجّع الرد بصيغة JSON بحقلين فقط: "text" (ردك النصي) و"matchedCarIds" (مصفوفة IDs من القائمة المرشحة فقط).
-          ` }],
-        }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              text: { type: Type.STRING },
-              matchedCarIds: { type: Type.ARRAY, items: { type: Type.INTEGER } },
-            },
-            required: ["text", "matchedCarIds"],
-          },
-        },
+        contents: [{ role: "user", parts: [{ text: buildUnderstandPrompt(message, history, prevSlots) }] }],
+        config: { responseMimeType: "application/json", responseSchema: UNDERSTAND_SCHEMA },
       });
 
-      const parsed = JSON.parse(response.text as string);
+      const understood = JSON.parse(understandResponse.text as string);
+      const intent: ChatIntent = (CHAT_INTENTS as readonly string[]).includes(understood?.intent) ? understood.intent : "direct_search";
+      const rawConfidence = Number(understood?.confidence);
+      const confidence = isNaN(rawConfidence) ? 0 : Math.max(0, Math.min(100, rawConfidence));
+      const mergedSlots = mergeSlots(prevSlots, understood?.slots);
+
+      // Confidence gate is intent-agnostic: a low-confidence classification into ANY
+      // bucket falls back to a clarifying question instead of searching on a thin or
+      // wrong slot set - guards against the model misclassifying an ambiguous message
+      // into a non-consultant bucket at low confidence.
+      if (confidence < 90) {
+        const followUp = typeof understood?.followUpQuestion === "string" && understood.followUpQuestion.trim()
+          ? understood.followUpQuestion.trim()
+          : "تحب سيارة جديدة ولا مستعملة، وميزانيتك قد ايه تقريبًا؟";
+        return res.json({ text: followUp, cars: [], slots: mergedSlots, intent: "consultant", confidence, done: false });
+      }
+
+      let candidates: any[];
+      const comparisonTargets = Array.isArray(understood?.comparisonTargets) ? understood.comparisonTargets : [];
+      if (intent === "comparison" && comparisonTargets.length >= 2) {
+        const targets = comparisonTargets.slice(0, 2);
+        const sideResults = targets.map((t: any) => {
+          const parsed: SearchParsed = {};
+          if (typeof t?.make === "string" && t.make) parsed.make = t.make;
+          if (typeof t?.model === "string" && t.model) parsed.model = t.model;
+          return searchCarsByFilters(allCars, parsed, {}).cars.slice(0, 5);
+        });
+        candidates = [
+          ...sideResults[0].map((c: any) => ({ ...c, comparisonGroup: "a" })),
+          ...sideResults[1].map((c: any) => ({ ...c, comparisonGroup: "b" })),
+        ];
+      } else {
+        const parsed = slotsToSearchParsed(mergedSlots);
+        const outcome = searchCarsByFilters(allCars, parsed, {
+          fuelEconomyIntent: intent === "fuel_economy_inquiry",
+          reliabilityIntent: intent === "reliability_inquiry",
+        });
+        candidates = outcome.cars.slice(0, 15);
+      }
+
+      const respondResult = await respondWithCandidates(intent, message, candidates);
+      if (!respondResult) {
+        return res.json({
+          text: "لقيت لك بعض السيارات اللي ممكن تناسبك:",
+          cars: candidates.slice(0, 6),
+          slots: mergedSlots,
+          intent,
+          confidence,
+          done: true,
+        });
+      }
+
       const candidateIds = new Set(candidates.map((c: any) => c.id));
-      const matchedCars = candidates.filter((c: any) =>
-        Array.isArray(parsed.matchedCarIds) && parsed.matchedCarIds.includes(c.id) && candidateIds.has(c.id)
-      );
-      res.json({ text: parsed.text, cars: matchedCars.length > 0 ? matchedCars : candidates.slice(0, 6) });
+      const matchedCars = candidates.filter((c: any) => respondResult.matchedCarIds.includes(c.id) && candidateIds.has(c.id));
+
+      res.json({
+        text: respondResult.text,
+        cars: matchedCars.length > 0 ? matchedCars : candidates.slice(0, 6),
+        slots: mergedSlots,
+        intent,
+        confidence,
+        done: true,
+      });
     } catch (e) {
       console.error("AI search chat error, falling back to deterministic search:", e);
-      fallback();
+      fallbackDirectSearch();
     }
   });
 
