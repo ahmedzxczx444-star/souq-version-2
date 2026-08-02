@@ -351,8 +351,17 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
   const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key";
 
-  // Gemini client stays server-side only - never expose GEMINI_API_KEY to the browser.
-  const genAI = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
+  // Gemini client stays server-side only - never expose the key to the browser.
+  // GEMINI_API_KEY is the canonical name; the others are accepted for backward
+  // compatibility with how the key may have been named in an existing deployment
+  // (e.g. a Railway variable set up before this name was settled on).
+  const GEMINI_KEY =
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.GEMINI_KEY ||
+    process.env["souq-cars-ai"];
+  const genAI = GEMINI_KEY ? new GoogleGenAI({ apiKey: GEMINI_KEY }) : null;
+  console.log("[AI] Gemini key resolved:", !!GEMINI_KEY, "-> genAI client:", !!genAI);
 
   console.log(`Configuring server on port ${PORT}...`);
 
@@ -789,6 +798,7 @@ async function startServer() {
   }
 
   app.post("/api/ai-search/chat", async (req, res) => {
+    console.log("[AI] endpoint called. message:", req.body?.message, "| Gemini key exists:", !!genAI);
     const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
     if (!message) return res.status(400).json({ error: "الرسالة مطلوبة" });
 
@@ -817,7 +827,10 @@ async function startServer() {
       });
     };
 
-    if (!genAI) return fallbackDirectSearch();
+    if (!genAI) {
+      console.log("[AI] no Gemini key configured - using deterministic fallback (no intent classification will run)");
+      return fallbackDirectSearch();
+    }
 
     try {
       const understandResponse = await genAI.models.generateContent({
@@ -831,6 +844,7 @@ async function startServer() {
       const rawConfidence = Number(understood?.confidence);
       const confidence = isNaN(rawConfidence) ? 0 : Math.max(0, Math.min(100, rawConfidence));
       const mergedSlots = mergeSlots(prevSlots, understood?.slots);
+      console.log("[AI] Intent:", intent, "| Confidence:", confidence, "| Entities/slots:", JSON.stringify(mergedSlots));
 
       // Confidence gate is intent-agnostic: a low-confidence classification into ANY
       // bucket falls back to a clarifying question instead of searching on a thin or
