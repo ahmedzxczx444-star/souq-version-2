@@ -118,14 +118,14 @@ export const SmartAIScreen: React.FC<SmartAIScreenProps> = ({
             </div>
             
             {msg.cars && msg.cars.length > 0 && (
-              <div className="mt-4 w-full grid grid-cols-1 gap-4">
+              <div className="mt-4 w-full grid grid-cols-1 gap-2">
                 {msg.cars.some(car => car.comparisonGroup) ? (
                   <>
                     {(["a", "b"] as const).map(group => {
                       const groupCars = msg.cars!.filter(car => car.comparisonGroup === group);
                       if (groupCars.length === 0) return null;
                       return (
-                        <div key={group} className="space-y-4">
+                        <div key={group} className="space-y-2">
                           <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-2">
                             {group === "a" ? "الخيار الأول:" : "الخيار الثاني:"}
                           </p>
@@ -140,7 +140,7 @@ export const SmartAIScreen: React.FC<SmartAIScreenProps> = ({
                                   toggleFavorite(car.id);
                                 }}
                                 t={t}
-                                variant="feed"
+                                variant="compact"
                               />
                             </div>
                           ))}
@@ -162,7 +162,7 @@ export const SmartAIScreen: React.FC<SmartAIScreenProps> = ({
                             toggleFavorite(car.id);
                           }}
                           t={t}
-                          variant="feed"
+                          variant="compact"
                         />
                       </div>
                     ))}

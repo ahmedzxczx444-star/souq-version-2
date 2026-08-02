@@ -1,6 +1,6 @@
 import React, { useState } from "react"; // UPDATED
 import { Car, User } from "../types"; // UPDATED
-import { Heart, MapPin, Gauge, Share2, ShieldCheck, Zap, Sparkles } from "lucide-react"; // UPDATED
+import { Heart, MapPin, Gauge, Share2, ShieldCheck, Zap, Sparkles, Building2 } from "lucide-react"; // UPDATED
 import { motion } from "motion/react";
 import { api } from "../services/api";
 import { subscriptionsEnabled } from "../constants/config";
@@ -12,7 +12,7 @@ interface CarCardProps {
   isFavorite?: boolean;
   onFavoriteToggle?: (e: React.MouseEvent) => void;
   t: any;
-  variant?: "grid" | "feed";
+  variant?: "grid" | "feed" | "compact";
   user?: User | null; // ADDED
 }
 
@@ -73,6 +73,43 @@ export const CarCard: React.FC<CarCardProps> = ({ car, onClick, isFavorite, onFa
       }
     }
   };
+
+  if (variant === "compact") {
+    return (
+      <motion.div
+        whileTap={{ scale: 0.98 }}
+        onClick={onClick}
+        className="flex items-stretch ltr:flex-row rtl:flex-row-reverse bg-white rounded-2xl border border-gray-100 shadow-sm cursor-pointer overflow-hidden h-[110px]"
+      >
+        <div className="relative w-[110px] h-full flex-shrink-0 overflow-hidden bg-gray-100">
+          <img
+            src={car.images[0]}
+            alt={`${car.make} ${car.model}`}
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+        <div className="flex-1 min-w-0 px-3 py-2 flex flex-col justify-center gap-1">
+          <h3 className="font-black text-gray-900 text-xs leading-tight truncate font-arabic">
+            {car.make} {car.model} {car.year}
+          </h3>
+          <p className="text-xs font-black text-[#1a4d3e] font-arabic">
+            {car.price.toLocaleString()} ج.م
+          </p>
+          <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold font-arabic truncate">
+            <Building2 size={11} className="flex-shrink-0 text-gray-400" />
+            <span className="truncate">{car.dealer_name || "معرض"}</span>
+          </div>
+          <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold font-arabic truncate">
+            <MapPin size={11} className="flex-shrink-0 text-[#1a4d3e]" />
+            <span className="truncate">{car.location || car.dealer_location || "القاهرة"}</span>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   if (isGrid) {
     return (
