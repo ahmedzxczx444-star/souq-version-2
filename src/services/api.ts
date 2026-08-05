@@ -1,4 +1,4 @@
-import { Car, Dealer, Reel, AuthResponse } from "../types";
+import { Car, Dealer, Reel, AuthResponse, Part } from "../types";
 
 const API_BASE = "/api";
 
@@ -168,6 +168,21 @@ export const api = {
         body: JSON.stringify({ message, history, slots }),
       });
       if (!res.ok) throw new Error("AI search failed");
+      return res.json();
+    },
+  },
+  smartSearch: {
+    chat: async (
+      message: string,
+      history: { role: "user" | "assistant"; content: string }[],
+      slots: Record<string, any>
+    ): Promise<{ text: string; cars: Car[]; parts: Part[]; slots: Record<string, any>; domain: string; intent?: string; confidence: number; done: boolean }> => {
+      const res = await fetch(`${API_BASE}/smart-search/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, history, slots }),
+      });
+      if (!res.ok) throw new Error("Smart search failed");
       return res.json();
     },
   },
@@ -354,6 +369,260 @@ export const api = {
     },
     getActivity: async (): Promise<any[]> => {
       const res = await fetch(`${API_BASE}/admin/activity`, { headers: getHeaders() });
+      return res.json();
+    },
+  },
+  parts: {
+    getDealerParts: async (): Promise<Part[]> => {
+      const res = await fetch(`${API_BASE}/parts`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch parts");
+      return res.json();
+    },
+    getById: async (id: number): Promise<Part> => {
+      const res = await fetch(`${API_BASE}/parts/${id}`);
+      if (!res.ok) throw new Error("Failed to fetch part");
+      return res.json();
+    },
+    create: async (data: any): Promise<{ success: boolean; id: number }> => {
+      const res = await fetch(`${API_BASE}/parts`, { method: "POST", headers: getHeaders(), body: JSON.stringify(data) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to add part");
+      return body;
+    },
+    update: async (id: number, data: any): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/parts/${id}`, { method: "PUT", headers: getHeaders(), body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to update part");
+      return res.json();
+    },
+    updateStatus: async (id: number, status: 'available' | 'unavailable'): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/parts/${id}/status`, { method: "PUT", headers: getHeaders(), body: JSON.stringify({ status }) });
+      if (!res.ok) throw new Error("Failed to update part status");
+      return res.json();
+    },
+    delete: async (id: number): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/parts/${id}`, { method: "DELETE", headers: getHeaders() });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to delete part");
+      return body;
+    },
+    getStats: async (): Promise<any> => {
+      const res = await fetch(`${API_BASE}/parts/dealer/stats`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch parts stats");
+      return res.json();
+    },
+    search: async (q: string): Promise<{ results: Part[]; count: number; noExactMatch: boolean; emptyQuery: boolean }> => {
+      const res = await fetch(`${API_BASE}/parts/search/query?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error("Parts search failed");
+      return res.json();
+    },
+    lookupPartNumber: async (partNumber: string): Promise<{ source: string; name: string; manufacturer: string; category: string; compatibleModels: any[]; confidence: number }> => {
+      const res = await fetch(`${API_BASE}/parts/lookup/part-number`, { method: "POST", headers: getHeaders(), body: JSON.stringify({ partNumber }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Part number lookup failed");
+      return body;
+    },
+    recognizeImage: async (image: string): Promise<{ name: string; partNumber: string; category: string; condition: string; compatibleModels: any[]; confidence: number }> => {
+      const res = await fetch(`${API_BASE}/parts/recognize-image`, { method: "POST", headers: getHeaders(), body: JSON.stringify({ image }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Image recognition failed");
+      return body;
+    },
+    recognizeBarcode: async (image: string): Promise<{ barcode: string; partNumber: string; manufacturer: string; category: string; confidence: number }> => {
+      const res = await fetch(`${API_BASE}/parts/recognize-barcode`, { method: "POST", headers: getHeaders(), body: JSON.stringify({ image }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Barcode recognition failed");
+      return body;
+    },
+    imageSearch: async (image: string): Promise<{ identification: any; results: Part[] }> => {
+      const res = await fetch(`${API_BASE}/parts/image-search`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Image search failed");
+      return body;
+    },
+  },
+  partsOrders: {
+    getDealerOrders: async (): Promise<any[]> => {
+      const res = await fetch(`${API_BASE}/parts/orders`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch orders");
+      return res.json();
+    },
+    updateStatus: async (id: number, status: string): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/parts/orders/${id}/status`, { method: "PUT", headers: getHeaders(), body: JSON.stringify({ status }) });
+      if (!res.ok) throw new Error("Failed to update order status");
+      return res.json();
+    },
+    place: async (partId: number, data: any): Promise<{ success: boolean; id: number }> => {
+      const res = await fetch(`${API_BASE}/parts/${partId}/order`, { method: "POST", headers: getHeaders(), body: JSON.stringify(data) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to place order");
+      return body;
+    },
+    getMyOrders: async (): Promise<any[]> => {
+      const res = await fetch(`${API_BASE}/parts/my-orders`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch orders");
+      return res.json();
+    },
+  },
+  dealerBranches: {
+    getAll: async (): Promise<any[]> => {
+      const res = await fetch(`${API_BASE}/dealer/branches`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch branches");
+      return res.json();
+    },
+    create: async (data: any): Promise<{ success: boolean; id: number }> => {
+      const res = await fetch(`${API_BASE}/dealer/branches`, { method: "POST", headers: getHeaders(), body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to create branch");
+      return res.json();
+    },
+    update: async (id: number, data: any): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/dealer/branches/${id}`, { method: "PUT", headers: getHeaders(), body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to update branch");
+      return res.json();
+    },
+    delete: async (id: number): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/dealer/branches/${id}`, { method: "DELETE", headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to delete branch");
+      return res.json();
+    },
+    getStats: async (id: number): Promise<any> => {
+      const res = await fetch(`${API_BASE}/dealer/branches/${id}/stats`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch branch stats");
+      return res.json();
+    },
+    moveCar: async (branchId: number, carId: number): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/dealer/branches/${branchId}/move-car`, {
+        method: "POST", headers: getHeaders(), body: JSON.stringify({ carId }),
+      });
+      if (!res.ok) throw new Error("Failed to move car");
+      return res.json();
+    },
+  },
+  dealerEmployees: {
+    getAll: async (): Promise<any[]> => {
+      const res = await fetch(`${API_BASE}/dealer/employees`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch employees");
+      return res.json();
+    },
+    create: async (data: any): Promise<{ success: boolean; id: number }> => {
+      const res = await fetch(`${API_BASE}/dealer/employees`, { method: "POST", headers: getHeaders(), body: JSON.stringify(data) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to add employee");
+      return body;
+    },
+    update: async (id: number, data: any): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/dealer/employees/${id}`, { method: "PUT", headers: getHeaders(), body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to update employee");
+      return res.json();
+    },
+    delete: async (id: number): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/dealer/employees/${id}`, { method: "DELETE", headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to remove employee");
+      return res.json();
+    },
+  },
+  dealerChain: {
+    getOverview: async (): Promise<any> => {
+      const res = await fetch(`${API_BASE}/dealer/chain/overview`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch chain overview");
+      return res.json();
+    },
+  },
+  importer: {
+    getWarehouses: async (): Promise<any[]> => {
+      const res = await fetch(`${API_BASE}/importer/warehouses`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch warehouses");
+      return res.json();
+    },
+    createWarehouse: async (data: any): Promise<{ success: boolean; id: number }> => {
+      const res = await fetch(`${API_BASE}/importer/warehouses`, { method: "POST", headers: getHeaders(), body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to create warehouse");
+      return res.json();
+    },
+    deleteWarehouse: async (id: number): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/importer/warehouses/${id}`, { method: "DELETE", headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to delete warehouse");
+      return res.json();
+    },
+    getShipments: async (): Promise<any[]> => {
+      const res = await fetch(`${API_BASE}/importer/shipments`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch shipments");
+      return res.json();
+    },
+    createShipment: async (data: any): Promise<{ success: boolean; id: number }> => {
+      const res = await fetch(`${API_BASE}/importer/shipments`, { method: "POST", headers: getHeaders(), body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to create shipment");
+      return res.json();
+    },
+    updateShipment: async (id: number, data: any): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/importer/shipments/${id}`, { method: "PUT", headers: getHeaders(), body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to update shipment");
+      return res.json();
+    },
+    addShipmentItem: async (shipmentId: number, data: any): Promise<{ success: boolean; id: number }> => {
+      const res = await fetch(`${API_BASE}/importer/shipments/${shipmentId}/items`, { method: "POST", headers: getHeaders(), body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to add shipment item");
+      return res.json();
+    },
+    getPreorders: async (): Promise<any[]> => {
+      const res = await fetch(`${API_BASE}/importer/preorders`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch pre-orders");
+      return res.json();
+    },
+    updatePreorder: async (id: number, status: string): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/importer/preorders/${id}`, { method: "PUT", headers: getHeaders(), body: JSON.stringify({ status }) });
+      if (!res.ok) throw new Error("Failed to update pre-order");
+      return res.json();
+    },
+    requestPreorder: async (dealerId: number, data: any): Promise<{ success: boolean; id: number }> => {
+      const res = await fetch(`${API_BASE}/importer/${dealerId}/preorders`, { method: "POST", headers: getHeaders(), body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to request pre-order");
+      return res.json();
+    },
+  },
+  officialAgent: {
+    getServiceCenters: async (): Promise<any[]> => {
+      const res = await fetch(`${API_BASE}/official/service-centers`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch service centers");
+      return res.json();
+    },
+    getPublicServiceCenters: async (dealerId: number): Promise<any[]> => {
+      const res = await fetch(`${API_BASE}/official/service-centers/public/${dealerId}`);
+      if (!res.ok) throw new Error("Failed to fetch service centers");
+      return res.json();
+    },
+    createServiceCenter: async (data: any): Promise<{ success: boolean; id: number }> => {
+      const res = await fetch(`${API_BASE}/official/service-centers`, { method: "POST", headers: getHeaders(), body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to create service center");
+      return res.json();
+    },
+    deleteServiceCenter: async (id: number): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/official/service-centers/${id}`, { method: "DELETE", headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to delete service center");
+      return res.json();
+    },
+    getOffers: async (): Promise<any[]> => {
+      const res = await fetch(`${API_BASE}/official/offers`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch offers");
+      return res.json();
+    },
+    createOffer: async (data: any): Promise<{ success: boolean; id: number }> => {
+      const res = await fetch(`${API_BASE}/official/offers`, { method: "POST", headers: getHeaders(), body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to create offer");
+      return res.json();
+    },
+    deleteOffer: async (id: number): Promise<{ success: boolean }> => {
+      const res = await fetch(`${API_BASE}/official/offers/${id}`, { method: "DELETE", headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to delete offer");
+      return res.json();
+    },
+    getWarranties: async (): Promise<any[]> => {
+      const res = await fetch(`${API_BASE}/official/warranties`, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch warranties");
+      return res.json();
+    },
+    createWarranty: async (data: any): Promise<{ success: boolean; id: number }> => {
+      const res = await fetch(`${API_BASE}/official/warranties`, { method: "POST", headers: getHeaders(), body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to create warranty");
       return res.json();
     },
   },

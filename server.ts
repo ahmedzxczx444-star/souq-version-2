@@ -19,6 +19,14 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { searchCars, searchCarsByFilters, SearchParsed, BRAND_COUNTRY_MAP } from "./searchEngine";
 import { initOtpService, sendOtp, verifyOtp, clearExpiredOtps } from "./services/otpService";
 import { isValidEgyptE164 } from "./phoneUtils";
+import { createDealerCategoryRouter } from "./routes/dealerCategory";
+import { createImporterRouter } from "./routes/importer";
+import { createOfficialAgentRouter } from "./routes/officialAgent";
+import { createPartsRouter } from "./routes/parts";
+import { createPartsOrdersRouter } from "./routes/partsOrders";
+import { classifyDomain } from "./ai/domainClassifier";
+import { searchParts, searchPartsByFilters, parsePartQuery } from "./ai/partsSearchEngine";
+import { respondWithPartsCandidates, buildDeterministicPartsReply } from "./ai/partsChat";
 
 dotenv.config();
 
@@ -29,6 +37,12 @@ const db = new Database("automarket.db");
 
 // Subscription and Promotion System Configuration (Feature Flag)
 const SUBSCRIPTION_SYSTEM_ENABLED = false;
+
+// Dealer categories (multi-branch/chain/importer/official-agent dashboards) and the
+// auto-parts marketplace ship dark behind these flags until each phase is verified in
+// production. Both default false: zero user-visible change until explicitly enabled.
+const DEALER_CATEGORIES_ENABLED = false;
+const PARTS_MARKETPLACE_ENABLED = false;
 
 const PLANS = {
   free: {
@@ -236,6 +250,186 @@ db.exec(`
   );
 `);
 
+// Dealer categories, auto-parts marketplace: new tables only, additive to the schema above.
+// Gated behind DEALER_CATEGORIES_ENABLED / PARTS_MARKETPLACE_ENABLED - see feature flags below.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS dealer_employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dealer_id INTEGER,
+    branch_id INTEGER,
+    user_id INTEGER,
+    role TEXT,
+    permissions TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dealer_id) REFERENCES dealers(id),
+    FOREIGN KEY (branch_id) REFERENCES dealer_branches(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS warehouses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dealer_id INTEGER,
+    name TEXT,
+    location TEXT,
+    address TEXT,
+    latitude REAL,
+    longitude REAL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dealer_id) REFERENCES dealers(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS shipments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dealer_id INTEGER,
+    warehouse_id INTEGER,
+    reference_code TEXT,
+    origin_country TEXT,
+    carrier TEXT,
+    status TEXT DEFAULT 'pending',
+    eta DATE,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dealer_id) REFERENCES dealers(id),
+    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS shipment_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    shipment_id INTEGER,
+    item_type TEXT,
+    car_id INTEGER,
+    part_id INTEGER,
+    description TEXT,
+    quantity INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (shipment_id) REFERENCES shipments(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS preorders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dealer_id INTEGER,
+    shipment_item_id INTEGER,
+    customer_user_id INTEGER,
+    car_make TEXT,
+    car_model TEXT,
+    desired_year INTEGER,
+    notes TEXT,
+    status TEXT DEFAULT 'requested',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dealer_id) REFERENCES dealers(id),
+    FOREIGN KEY (shipment_item_id) REFERENCES shipment_items(id),
+    FOREIGN KEY (customer_user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS service_centers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dealer_id INTEGER,
+    branch_id INTEGER,
+    name TEXT,
+    address TEXT,
+    phone TEXT,
+    services TEXT,
+    latitude REAL,
+    longitude REAL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dealer_id) REFERENCES dealers(id),
+    FOREIGN KEY (branch_id) REFERENCES dealer_branches(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS official_offers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dealer_id INTEGER,
+    title TEXT,
+    description TEXT,
+    image TEXT,
+    discount_percent INTEGER,
+    valid_from DATE,
+    valid_to DATE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dealer_id) REFERENCES dealers(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS car_warranties (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    car_id INTEGER,
+    dealer_id INTEGER,
+    warranty_type TEXT,
+    duration_months INTEGER,
+    coverage_details TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (car_id) REFERENCES cars(id),
+    FOREIGN KEY (dealer_id) REFERENCES dealers(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS parts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dealer_id INTEGER,
+    name TEXT,
+    part_number TEXT,
+    manufacturer TEXT,
+    category TEXT,
+    part_subtype TEXT,
+    condition_status TEXT,
+    images TEXT, -- JSON string array, same convention as cars.images
+    price INTEGER,
+    status TEXT DEFAULT 'available', -- 'available' | 'unavailable' ONLY, no quantity tracking
+    delivery_supported INTEGER DEFAULT 0,
+    views INTEGER DEFAULT 0,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dealer_id) REFERENCES dealers(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS part_compatibility (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    part_id INTEGER,
+    make TEXT,
+    model TEXT,
+    year_from INTEGER,
+    year_to INTEGER,
+    FOREIGN KEY (part_id) REFERENCES parts(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dealer_id INTEGER,
+    buyer_user_id INTEGER,
+    status TEXT DEFAULT 'pending', -- pending | confirmed | delivered | cancelled
+    delivery_method TEXT,
+    delivery_address TEXT,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dealer_id) REFERENCES dealers(id),
+    FOREIGN KEY (buyer_user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS order_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER,
+    part_id INTEGER,
+    price_at_order INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (part_id) REFERENCES parts(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS part_number_catalog (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    part_number TEXT UNIQUE,
+    manufacturer TEXT,
+    name TEXT,
+    category TEXT,
+    compatible_json TEXT,
+    source TEXT, -- 'ai' | 'dealer_confirmed'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_part_compat_make_model ON part_compatibility(make, model);
+  CREATE INDEX IF NOT EXISTS idx_parts_part_number ON parts(part_number);
+  CREATE INDEX IF NOT EXISTS idx_parts_dealer ON parts(dealer_id);
+`);
+
 // Extend Database Schema for Subscription and Promotion System (Safely after table creation)
 try { db.exec("ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free'"); } catch (e) {}
 try { db.exec("ALTER TABLE users ADD COLUMN monthly_car_count INTEGER DEFAULT 0"); } catch (e) {}
@@ -283,6 +477,22 @@ try {
 try {
   db.exec("ALTER TABLE reels ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP");
 } catch (e) {}
+
+// Dealer categories / auto-parts marketplace columns (additive; every existing dealer
+// defaults to business_type='car_dealer', dealer_category='single' - today's behavior).
+try { db.exec("ALTER TABLE dealers ADD COLUMN business_type TEXT DEFAULT 'car_dealer'"); } catch (e) {}
+try { db.exec("ALTER TABLE dealers ADD COLUMN dealer_category TEXT DEFAULT 'single'"); } catch (e) {}
+try { db.exec("ALTER TABLE dealers ADD COLUMN parts_specialties TEXT"); } catch (e) {}
+try { db.exec("ALTER TABLE dealers ADD COLUMN delivery_supported INTEGER DEFAULT 0"); } catch (e) {}
+
+try { db.exec("ALTER TABLE dealer_branches ADD COLUMN manager_user_id INTEGER"); } catch (e) {}
+try { db.exec("ALTER TABLE dealer_branches ADD COLUMN is_headquarters INTEGER DEFAULT 0"); } catch (e) {}
+try { db.exec("ALTER TABLE dealer_branches ADD COLUMN region TEXT"); } catch (e) {}
+
+try { db.exec("ALTER TABLE cars ADD COLUMN branch_id INTEGER"); } catch (e) {}
+
+try { db.exec("ALTER TABLE conversations ADD COLUMN part_id INTEGER"); } catch (e) {}
+try { db.exec("ALTER TABLE conversations ADD COLUMN item_type TEXT DEFAULT 'car'"); } catch (e) {}
 
 // OTP verification tables (registration, forgot-password, change-email)
 initOtpService(db);
@@ -368,8 +578,9 @@ async function startServer() {
   // Multer configuration for video uploads
   const uploadDir = path.join(process.cwd(), "uploads", "reels");
   const carImagesDir = path.join(process.cwd(), "uploads", "cars");
-  
-  [uploadDir, carImagesDir].forEach(dir => {
+  const partImagesDir = path.join(process.cwd(), "uploads", "parts");
+
+  [uploadDir, carImagesDir, partImagesDir].forEach(dir => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -485,6 +696,15 @@ async function startServer() {
     next();
   };
 
+  // Dealer-category routers (multi-branch/chain/importer/official-agent dashboards).
+  // Ship dark behind DEALER_CATEGORIES_ENABLED - mounting them has zero effect on any
+  // existing route, since these paths don't overlap with anything already registered.
+  if (DEALER_CATEGORIES_ENABLED) {
+    app.use("/api/dealer", createDealerCategoryRouter({ db, authenticate }));
+    app.use("/api/importer", createImporterRouter({ db, authenticate }));
+    app.use("/api/official", createOfficialAgentRouter({ db, authenticate }));
+  }
+
   const logActivity = (action: string, userId: number, details: string) => {
     try {
       db.prepare("INSERT INTO activity_log (action, user_id, details) VALUES (?, ?, ?)").run(action, userId, details);
@@ -514,6 +734,16 @@ async function startServer() {
     lastAction.set(key, now);
     next();
   };
+
+  // Auto-parts marketplace routers. Ship dark behind PARTS_MARKETPLACE_ENABLED.
+  // partsOrders is mounted BEFORE parts: parts.ts declares a catch-all GET /:id
+  // (public part detail) that would otherwise shadow partsOrders' GET /orders and
+  // GET /my-orders single-segment routes at this same /api/parts base path - Express
+  // resolves routers in mount order, so the more specific router must come first.
+  if (PARTS_MARKETPLACE_ENABLED) {
+    app.use("/api/parts", createPartsOrdersRouter({ db, authenticate }));
+    app.use("/api/parts", createPartsRouter({ db, authenticate, genAI, cooldownMiddleware }));
+  }
 
   // Shared helper: fetch all active-dealer cars with images parsed (used by /api/cars and /api/search)
   const getActiveCars = (): any[] => {
@@ -909,6 +1139,129 @@ async function startServer() {
     }
   });
 
+  // ---------- Unified smart search: silent car-vs-parts domain detection ----------
+  // New endpoint, defined here (never inside the block above) so it can reuse the
+  // existing car pipeline's prompts/schemas/search by reference. UNDERSTAND_SCHEMA,
+  // RESPOND_SCHEMA, buildUnderstandPrompt, buildRespondPrompt, and the
+  // /api/ai-search/chat handler above are never modified by this addition.
+
+  const getActivePartsForSearch = (): any[] => {
+    const parts = db.prepare(`
+      SELECT parts.*, dealers.name as dealer_name, dealers.location as dealer_location
+      FROM parts JOIN dealers ON dealers.id = parts.dealer_id
+      WHERE parts.status = 'available' AND dealers.status = 'active'
+    `).all() as any[];
+    const getCompat = db.prepare("SELECT make, model, year_from, year_to FROM part_compatibility WHERE part_id = ?");
+    return parts.map((p) => {
+      let images: string[] = [];
+      try { images = p.images ? JSON.parse(p.images) : []; } catch { images = []; }
+      return { ...p, images, delivery_supported: !!p.delivery_supported, compatibility: getCompat.all(p.id) };
+    });
+  };
+
+  if (PARTS_MARKETPLACE_ENABLED) {
+    app.post("/api/smart-search/chat", async (req, res) => {
+      const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+      if (!message) return res.status(400).json({ error: "الرسالة مطلوبة" });
+
+      const rawHistory = Array.isArray(req.body?.history) ? req.body.history : [];
+      const history = rawHistory
+        .filter((h: any) => h && (h.role === "user" || h.role === "assistant") && typeof h.content === "string")
+        .slice(-10)
+        .map((h: any) => ({ role: h.role, content: String(h.content).slice(0, 500) }));
+
+      const prevSlots: ChatSlots = (req.body?.slots && typeof req.body.slots === "object") ? req.body.slots : {};
+
+      const classification = await classifyDomain(genAI, message, history);
+      const CAR_DOMAIN_THRESHOLD = 60;
+
+      // Ambiguous, or low-confidence either way: never ask "car or parts?" - just
+      // search both deterministically and return whichever arrays have results.
+      const runAmbiguous = () => {
+        const carOutcome = searchCars(getActiveCars(), message);
+        const partOutcome = searchParts(getActivePartsForSearch(), message);
+        const cars = carOutcome.cars.slice(0, 6);
+        const parts = partOutcome.parts.slice(0, 6);
+        let text: string;
+        if (cars.length === 0 && parts.length === 0) {
+          text = "مش لاقي نتائج مطابقة. جرب توضح الماركة/الموديل لو بتدور على سيارة، أو اسم القطعة والموديل المتوافق لو بتدور على قطعة غيار.";
+        } else if (cars.length > 0 && parts.length > 0) {
+          text = `لقيت لك ${cars.length} سيارة و${parts.length} قطعة غيار ممكن تناسب طلبك:`;
+        } else if (cars.length > 0) {
+          text = buildDeterministicReply(carOutcome);
+        } else {
+          text = buildDeterministicPartsReply(partOutcome);
+        }
+        res.json({ text, cars, parts, slots: prevSlots, domain: "ambiguous", confidence: classification.confidence, done: true });
+      };
+
+      if (classification.domain === "ambiguous" || classification.confidence < CAR_DOMAIN_THRESHOLD || !genAI) {
+        return runAmbiguous();
+      }
+
+      try {
+        if (classification.domain === "car") {
+          // Same understand -> search -> respond pipeline as /api/ai-search/chat,
+          // calling the exact same functions by reference (never re-implemented).
+          const understandResponse = await genAI.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: [{ role: "user", parts: [{ text: buildUnderstandPrompt(classification.carQuery || message, history, prevSlots) }] }],
+            config: { responseMimeType: "application/json", responseSchema: UNDERSTAND_SCHEMA },
+          });
+          const understood = JSON.parse(understandResponse.text as string);
+          const intent: ChatIntent = (CHAT_INTENTS as readonly string[]).includes(understood?.intent) ? understood.intent : "direct_search";
+          const rawConfidence = Number(understood?.confidence);
+          const confidence = isNaN(rawConfidence) ? 0 : Math.max(0, Math.min(100, rawConfidence));
+          const mergedSlots = mergeSlots(prevSlots, understood?.slots);
+
+          if (confidence < 90) {
+            const followUp = typeof understood?.followUpQuestion === "string" && understood.followUpQuestion.trim()
+              ? understood.followUpQuestion.trim()
+              : "تحب سيارة جديدة ولا مستعملة، وميزانيتك قد ايه تقريبًا؟";
+            return res.json({ text: followUp, cars: [], parts: [], slots: mergedSlots, domain: "car", intent: "consultant", confidence, done: false });
+          }
+
+          const parsed = slotsToSearchParsed(mergedSlots);
+          const outcome = searchCarsByFilters(getActiveCars(), parsed, {
+            fuelEconomyIntent: intent === "fuel_economy_inquiry",
+            reliabilityIntent: intent === "reliability_inquiry",
+          });
+          const candidates = outcome.cars.slice(0, 15);
+          const respondResult = await respondWithCandidates(intent, message, candidates);
+          const cars = respondResult
+            ? (candidates.filter((c: any) => respondResult.matchedCarIds.includes(c.id)).length > 0
+                ? candidates.filter((c: any) => respondResult.matchedCarIds.includes(c.id))
+                : candidates.slice(0, 6))
+            : candidates.slice(0, 6);
+
+          return res.json({
+            text: respondResult?.text || "لقيت لك بعض السيارات اللي ممكن تناسبك:",
+            cars, parts: [], slots: mergedSlots, domain: "car", intent, confidence, done: true,
+          });
+        }
+
+        // domain === "parts"
+        const partParsed = parsePartQuery(classification.partsQuery || message);
+        const partOutcome = searchPartsByFilters(getActivePartsForSearch(), partParsed);
+        const partCandidates = partOutcome.parts.slice(0, 15);
+        const partsRespond = await respondWithPartsCandidates(genAI, message, partCandidates);
+        const parts = partsRespond
+          ? (partCandidates.filter((p: any) => partsRespond.matchedPartIds.includes(p.id)).length > 0
+              ? partCandidates.filter((p: any) => partsRespond.matchedPartIds.includes(p.id))
+              : partCandidates.slice(0, 6))
+          : partCandidates.slice(0, 6);
+
+        res.json({
+          text: partsRespond?.text || buildDeterministicPartsReply(partOutcome),
+          cars: [], parts, slots: prevSlots, domain: "parts", confidence: classification.confidence, done: true,
+        });
+      } catch (e) {
+        console.error("[SmartSearch] chat error, falling back to ambiguous dual search:", e);
+        runAmbiguous();
+      }
+    });
+  }
+
   app.get("/api/dealers", (req, res) => {
     const { type } = req.query;
     
@@ -1107,8 +1460,15 @@ async function startServer() {
   });
 
   // Auth Routes
+  // Allowed values for the optional dealer-category picker (only shown in the UI
+  // behind DEALER_CATEGORIES_ENABLED/PARTS_MARKETPLACE_ENABLED). Omitting either field
+  // falls back to the dealers table's own column defaults ('car_dealer'/'single'),
+  // which is byte-identical to registration behavior before this addition.
+  const VALID_BUSINESS_TYPES = ["car_dealer", "parts_dealer"];
+  const VALID_DEALER_CATEGORIES = ["single", "multi_branch", "chain", "importer", "official_agent"];
+
   app.post("/api/auth/register", authLimiter, async (req, res) => {
-    let { email, password, name, role, phone, whatsapp_number, branches_count, address, latitude, longitude, logo, captchaToken } = req.body;
+    let { email, password, name, role, phone, whatsapp_number, branches_count, address, latitude, longitude, logo, captchaToken, business_type, dealer_category } = req.body;
     email = validator.normalizeEmail(email);
 
     // Input Validation
@@ -1123,6 +1483,12 @@ async function startServer() {
     }
     if (role === 'dealer' && (!isValidEgyptE164(phone) || !isValidEgyptE164(whatsapp_number))) {
       return res.status(400).json({ error: "Phone and WhatsApp numbers must be a valid Egyptian mobile number (e.g. +201012345678)" });
+    }
+    if (business_type !== undefined && !VALID_BUSINESS_TYPES.includes(business_type)) {
+      return res.status(400).json({ error: "Invalid business type" });
+    }
+    if (dealer_category !== undefined && !VALID_DEALER_CATEGORIES.includes(dealer_category)) {
+      return res.status(400).json({ error: "Invalid dealer category" });
     }
 
     // reCAPTCHA verification
@@ -1161,10 +1527,16 @@ async function startServer() {
       }
 
       if (role === 'dealer') {
+        // Falls back to the same values as the dealers table's own column defaults
+        // when omitted, so a request that never sends these fields (e.g. before the
+        // registration UI added the picker) behaves exactly as it did before.
+        const resolvedBusinessType = business_type || 'car_dealer';
+        const resolvedDealerCategory = dealer_category || 'single';
+
         const existingDealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(userId) as any;
         if (existingDealer) {
           db.prepare(`
-            UPDATE dealers SET name = ?, logo = ?, phone = ?, whatsapp_number = ?, branches_count = ?, address = ?, latitude = ?, longitude = ?
+            UPDATE dealers SET name = ?, logo = ?, phone = ?, whatsapp_number = ?, branches_count = ?, address = ?, latitude = ?, longitude = ?, business_type = ?, dealer_category = ?
             WHERE id = ?
           `).run(
             escapedName,
@@ -1175,12 +1547,14 @@ async function startServer() {
             validator.escape(address || ''),
             latitude || null,
             longitude || null,
+            resolvedBusinessType,
+            resolvedDealerCategory,
             existingDealer.id
           );
         } else {
           db.prepare(`
-            INSERT INTO dealers (user_id, name, logo, phone, whatsapp_number, branches_count, address, latitude, longitude, rating)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO dealers (user_id, name, logo, phone, whatsapp_number, branches_count, address, latitude, longitude, rating, business_type, dealer_category)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `).run(
             userId,
             escapedName,
@@ -1191,7 +1565,9 @@ async function startServer() {
             validator.escape(address || ''),
             latitude || null,
             longitude || null,
-            5.0
+            5.0,
+            resolvedBusinessType,
+            resolvedDealerCategory
           );
         }
       }

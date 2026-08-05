@@ -1,7 +1,7 @@
-import React from "react";
-import { User, Settings, Bell, Shield, LogOut, ChevronRight, CreditCard, Crown } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { User, Settings, Bell, Shield, LogOut, ChevronRight, CreditCard, Crown, Sparkles } from "lucide-react";
 import { api } from "../services/api";
-import { subscriptionsEnabled } from "../constants/config";
+import { subscriptionsEnabled, dealerCategoriesEnabled, partsMarketplaceEnabled } from "../constants/config";
 
 interface ProfileScreenProps {
   user: any;
@@ -12,11 +12,48 @@ interface ProfileScreenProps {
   t: any;
 }
 
+// Maps a dealer's category to the dashboard screen it should route to. 'single'
+// (the default for every existing dealer) keeps using onDealerDashboard, i.e. the
+// original, unmodified DealerDashboard - only the 4 new categories route elsewhere.
+const CATEGORY_DASHBOARD_SCREEN: Record<string, string> = {
+  multi_branch: "multi-branch-dashboard",
+  chain: "chain-dashboard",
+  importer: "importer-dashboard",
+  official_agent: "official-agent-dashboard",
+};
+
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onAddCar, onDealerDashboard, onNavigate, t }) => {
+  const [dealerCategory, setDealerCategory] = useState<string | null>(null);
+  const [businessType, setBusinessType] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user.role === 'dealer' && (dealerCategoriesEnabled || partsMarketplaceEnabled)) {
+      api.dealers.getProfile()
+        .then((d: any) => {
+          setDealerCategory(d?.dealer_category || 'single');
+          setBusinessType(d?.business_type || 'car_dealer');
+        })
+        .catch(() => {
+          setDealerCategory('single');
+          setBusinessType('car_dealer');
+        });
+    }
+  }, [user.role]);
+
+  const isPartsDealer = partsMarketplaceEnabled && businessType === 'parts_dealer';
+
+  const goToDealerDashboard = () => {
+    if (isPartsDealer) return onNavigate("parts-dashboard");
+    const targetScreen = dealerCategory ? CATEGORY_DASHBOARD_SCREEN[dealerCategory] : undefined;
+    if (targetScreen) onNavigate(targetScreen);
+    else onDealerDashboard('cars');
+  };
+
   const menuItems = [
+    ...(partsMarketplaceEnabled ? [{ icon: Sparkles, label: "بحث ذكي موحد (سيارات وقطع غيار)", color: "text-emerald-500", onClick: () => onNavigate("unified-search") }] : []),
     { icon: Bell, label: t.notifications, color: "text-blue-500", onClick: () => onNavigate("notifications") },
-    { icon: CreditCard, label: t.myListings, color: "text-emerald-500", onClick: () => user.role === 'dealer' ? onDealerDashboard('cars') : alert(t.myListings) },
-    ...(user.role === 'dealer' ? [{ icon: Settings, label: t.dealerDashboard, color: "text-emerald-600", onClick: () => onDealerDashboard('cars') }] : []),
+    { icon: CreditCard, label: t.myListings, color: "text-emerald-500", onClick: () => user.role === 'dealer' ? goToDealerDashboard() : alert(t.myListings) },
+    ...(user.role === 'dealer' ? [{ icon: Settings, label: isPartsDealer ? "لوحة تحكم قطع الغيار" : t.dealerDashboard, color: "text-emerald-600", onClick: goToDealerDashboard }] : []),
     ...(subscriptionsEnabled && user.role === 'dealer' ? [{ icon: Crown, label: "خطط الاشتراك", color: "text-amber-500", onClick: () => onNavigate("subscription-plans") }] : []),
     { icon: Shield, label: t.privacy, color: "text-purple-500", onClick: () => onNavigate("privacy-security") },
     { icon: Settings, label: t.settings, color: "text-gray-500", onClick: () => onNavigate("settings") },
@@ -75,12 +112,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, on
 
       {user.role === 'dealer' && (
         <button
-          onClick={onAddCar}
+          onClick={isPartsDealer ? () => onNavigate("add-part") : onAddCar}
           disabled={user.is_verified === 0}
           className="w-full flex items-center justify-center gap-2 p-5 bg-black text-white font-bold rounded-[32px] shadow-xl shadow-black/20 mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="text-lg">+</span>
-          {t.addCar}
+          {isPartsDealer ? "إضافة قطعة غيار" : t.addCar}
         </button>
       )}
 

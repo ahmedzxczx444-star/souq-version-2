@@ -65,6 +65,10 @@ export interface Dealer {
   subscription_end?: string;
   email?: string;
   branches?: Branch[];
+  business_type?: 'car_dealer' | 'parts_dealer';
+  dealer_category?: 'single' | 'multi_branch' | 'chain' | 'importer' | 'official_agent';
+  parts_specialties?: string[];
+  delivery_supported?: boolean;
 }
 
 export interface DealerStats {
@@ -117,4 +121,36 @@ export interface ActivityLog {
 export interface AuthResponse {
   token: string;
   user: User;
+}
+
+export interface PartCompatibility {
+  make: string;
+  model?: string;
+  year_from?: number;
+  year_to?: number;
+}
+
+export interface Part {
+  id: number;
+  dealer_id: number;
+  name: string;
+  part_number?: string;
+  manufacturer?: string;
+  category?: string;
+  part_subtype?: string;
+  condition_status?: 'new' | 'used' | 'refurbished' | string;
+  images: string[];
+  price?: number | null;
+  status: 'available' | 'unavailable';
+  delivery_supported?: boolean;
+  views?: number;
+  createdAt?: string;
+  compatibility?: PartCompatibility[];
+  dealer_name?: string;
+  dealer_logo?: string;
+  dealer_location?: string;
+  dealer_phone?: string;
+  dealer_whatsapp?: string;
+  dealer_address?: string;
+  dealer_map_link?: string;
 }
