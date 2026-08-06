@@ -3,6 +3,15 @@ import { api } from "../services/api";
 import { User, Mail, Lock, ChevronRight, Phone, MapPin, Hash, Image as ImageIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { isValidEgyptLocalPhone, toEgyptE164 } from "../../phoneUtils";
+import { dealerCategoriesEnabled, partsMarketplaceEnabled } from "../constants/config";
+
+const DEALER_CATEGORY_OPTIONS = [
+  { value: "single", label: "معرض واحد" },
+  { value: "multi_branch", label: "أكثر من فرع (2-5)" },
+  { value: "chain", label: "سلسلة معارض كبرى" },
+  { value: "importer", label: "مستورد سيارات" },
+  { value: "official_agent", label: "وكيل رسمي" },
+];
 
 declare global {
   interface Window {
@@ -36,6 +45,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, t }) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState("user");
+
+  // Dealer categorization (only surfaced in the UI behind the feature flags; the
+  // register API defaults to business_type='car_dealer', dealer_category='single'
+  // when these are omitted, exactly matching pre-existing behavior).
+  const [businessType, setBusinessType] = useState<"car_dealer" | "parts_dealer">("car_dealer");
+  const [dealerCategory, setDealerCategory] = useState("single");
+  const dealerCategorizationEnabled = dealerCategoriesEnabled || partsMarketplaceEnabled;
 
   // Dealer specific fields
   const [phone, setPhone] = useState("");
@@ -227,7 +243,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, t }) => {
           latitude: parseFloat(latitude),
           longitude: parseFloat(longitude),
           logo,
-          captchaToken
+          captchaToken,
+          ...(role === "dealer" && dealerCategorizationEnabled
+            ? { business_type: businessType, dealer_category: businessType === "car_dealer" ? dealerCategory : undefined }
+            : {}),
         });
         startOtpStep("register", res.email);
       }
@@ -474,6 +493,65 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, t }) => {
                 </div>
               </label>
             </div>
+
+            {role === "dealer" && dealerCategorizationEnabled && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="space-y-3 pt-2"
+              >
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block">نوع النشاط</label>
+                <div className="flex gap-3">
+                  <label className="flex-1 relative cursor-pointer">
+                    <input
+                      type="radio"
+                      name="businessType"
+                      value="car_dealer"
+                      checked={businessType === "car_dealer"}
+                      onChange={() => setBusinessType("car_dealer")}
+                      className="sr-only"
+                    />
+                    <div className={`w-full py-3 rounded-2xl text-xs font-bold border text-center transition-all ${
+                      businessType === "car_dealer" ? "bg-emerald-500 text-white border-emerald-500" : "bg-gray-50 text-gray-400 border-gray-100"
+                    }`}>
+                      معرض سيارات
+                    </div>
+                  </label>
+                  {partsMarketplaceEnabled && (
+                    <label className="flex-1 relative cursor-pointer">
+                      <input
+                        type="radio"
+                        name="businessType"
+                        value="parts_dealer"
+                        checked={businessType === "parts_dealer"}
+                        onChange={() => setBusinessType("parts_dealer")}
+                        className="sr-only"
+                      />
+                      <div className={`w-full py-3 rounded-2xl text-xs font-bold border text-center transition-all ${
+                        businessType === "parts_dealer" ? "bg-emerald-500 text-white border-emerald-500" : "bg-gray-50 text-gray-400 border-gray-100"
+                      }`}>
+                        تاجر قطع غيار
+                      </div>
+                    </label>
+                  )}
+                </div>
+
+                {businessType === "car_dealer" && dealerCategoriesEnabled && (
+                  <div>
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">فئة المعرض</label>
+                    <select
+                      value={dealerCategory}
+                      onChange={(e) => setDealerCategory(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-3.5 px-5 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/5 appearance-none"
+                    >
+                      {DEALER_CATEGORY_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </motion.div>
+            )}
 
             {role === "dealer" && (
               <motion.div

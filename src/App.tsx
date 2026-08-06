@@ -21,14 +21,33 @@ import { FeaturedCarsScreen } from "./screens/FeaturedCarsScreen";
 import { AllDealersScreen } from "./screens/AllDealersScreen";
 import { SubscriptionPlans } from "./screens/SubscriptionPlans"; // ADDED
 import { SearchResultsScreen } from "./screens/SearchResultsScreen";
+import { MultiBranchDashboard } from "./screens/MultiBranchDashboard";
+import { ChainDashboard } from "./screens/ChainDashboard";
+import { ImporterDashboard } from "./screens/ImporterDashboard";
+import { OfficialAgentDashboard } from "./screens/OfficialAgentDashboard";
+import { PartsDashboard } from "./screens/PartsDashboard";
+import { AddPartScreen } from "./screens/AddPartScreen";
+import { PartDetailsScreen } from "./screens/PartDetailsScreen";
+import { UnifiedSearchScreen } from "./screens/UnifiedSearchScreen";
 import { BottomNav } from "./components/BottomNav";
-import { Car, User } from "./types";
+import { Car, Part, User } from "./types";
 import { api } from "./services/api";
 import { AnimatePresence, motion } from "motion/react";
 import { Language, translations } from "./constants/translations";
 import { Languages } from "lucide-react";
 
-type Screen = "home" | "reels" | "favorites" | "profile" | "details" | "dealer" | "add-car" | "add-reel" | "dealer-dashboard" | "smart-ai" | "admin" | "notifications" | "privacy-security" | "settings" | "terms" | "privacy" | "contact" | "featured-cars" | "all-dealers" | "subscription-plans" | "search-results"; // UPDATED
+type Screen = "home" | "reels" | "favorites" | "profile" | "details" | "dealer" | "add-car" | "add-reel" | "dealer-dashboard" | "smart-ai" | "admin" | "notifications" | "privacy-security" | "settings" | "terms" | "privacy" | "contact" | "featured-cars" | "all-dealers" | "subscription-plans" | "search-results" | "multi-branch-dashboard" | "chain-dashboard" | "importer-dashboard" | "official-agent-dashboard" | "parts-dashboard" | "add-part" | "part-details" | "unified-search"; // UPDATED
+
+// Screens that render their own full-page chrome (own header/back button) and should
+// not show the bottom tab bar. Kept as a Set (rather than an inline &&-chain) so new
+// screens can be added without risking a mis-edit of the existing chain.
+const NO_BOTTOM_NAV_SCREENS = new Set<Screen>([
+  "details", "dealer", "add-car", "add-reel", "smart-ai", "admin", "notifications",
+  "privacy-security", "settings", "terms", "privacy", "contact", "featured-cars",
+  "all-dealers", "search-results",
+  "multi-branch-dashboard", "chain-dashboard", "importer-dashboard", "official-agent-dashboard",
+  "parts-dashboard", "add-part", "part-details", "unified-search",
+]);
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Screen>("home");
@@ -43,6 +62,8 @@ export default function App() {
   const [isFeedMode, setIsFeedMode] = useState(false);
   const [dashboardSection, setDashboardSection] = useState<'cars' | 'profile'>('cars');
   const [appSearchQuery, setAppSearchQuery] = useState("");
+  const [selectedPartId, setSelectedPartId] = useState<number | null>(null);
+  const [editingPart, setEditingPart] = useState<Part | null>(null);
 
   const t = translations[lang];
 
@@ -181,10 +202,64 @@ export default function App() {
             initialSection={dashboardSection}
           />
         );
+      case "multi-branch-dashboard":
+        if (!user || user.role !== 'dealer') return <HomeScreen onCarClick={navigateToDetails} onDealerClick={navigateToDealer} favorites={favorites} toggleFavorite={toggleFavorite} t={t} toggleLanguage={toggleLanguage} onFeedModeChange={setIsFeedMode} onSmartAIClick={() => setActiveTab("smart-ai")} onNavigate={setActiveTab} />;
+        return (
+          <MultiBranchDashboard
+            user={user}
+            onBack={() => setActiveTab("profile")}
+            onAddCar={() => { setEditingCar(null); setActiveTab("add-car"); }}
+            t={t}
+          />
+        );
+      case "chain-dashboard":
+        if (!user || user.role !== 'dealer') return <HomeScreen onCarClick={navigateToDetails} onDealerClick={navigateToDealer} favorites={favorites} toggleFavorite={toggleFavorite} t={t} toggleLanguage={toggleLanguage} onFeedModeChange={setIsFeedMode} onSmartAIClick={() => setActiveTab("smart-ai")} onNavigate={setActiveTab} />;
+        return <ChainDashboard user={user} onBack={() => setActiveTab("profile")} t={t} />;
+      case "importer-dashboard":
+        if (!user || user.role !== 'dealer') return <HomeScreen onCarClick={navigateToDetails} onDealerClick={navigateToDealer} favorites={favorites} toggleFavorite={toggleFavorite} t={t} toggleLanguage={toggleLanguage} onFeedModeChange={setIsFeedMode} onSmartAIClick={() => setActiveTab("smart-ai")} onNavigate={setActiveTab} />;
+        return <ImporterDashboard user={user} onBack={() => setActiveTab("profile")} t={t} />;
+      case "official-agent-dashboard":
+        if (!user || user.role !== 'dealer') return <HomeScreen onCarClick={navigateToDetails} onDealerClick={navigateToDealer} favorites={favorites} toggleFavorite={toggleFavorite} t={t} toggleLanguage={toggleLanguage} onFeedModeChange={setIsFeedMode} onSmartAIClick={() => setActiveTab("smart-ai")} onNavigate={setActiveTab} />;
+        return <OfficialAgentDashboard user={user} onBack={() => setActiveTab("profile")} t={t} />;
+      case "parts-dashboard":
+        if (!user || user.role !== 'dealer') return <HomeScreen onCarClick={navigateToDetails} onDealerClick={navigateToDealer} favorites={favorites} toggleFavorite={toggleFavorite} t={t} toggleLanguage={toggleLanguage} onFeedModeChange={setIsFeedMode} onSmartAIClick={() => setActiveTab("smart-ai")} onNavigate={setActiveTab} />;
+        return (
+          <PartsDashboard
+            user={user}
+            onBack={() => setActiveTab("profile")}
+            onAddPart={() => { setEditingPart(null); setActiveTab("add-part"); }}
+            onEditPart={(part) => { setEditingPart(part); setActiveTab("add-part"); }}
+          />
+        );
+      case "add-part":
+        if (!user || user.role !== 'dealer') return <HomeScreen onCarClick={navigateToDetails} onDealerClick={navigateToDealer} favorites={favorites} toggleFavorite={toggleFavorite} t={t} toggleLanguage={toggleLanguage} onFeedModeChange={setIsFeedMode} onSmartAIClick={() => setActiveTab("smart-ai")} onNavigate={setActiveTab} />;
+        return (
+          <AddPartScreen
+            onBack={() => setActiveTab("parts-dashboard")}
+            onSuccess={() => setActiveTab("parts-dashboard")}
+            initialPart={editingPart || undefined}
+          />
+        );
+      case "part-details":
+        return selectedPartId ? (
+          <PartDetailsScreen partId={selectedPartId} onBack={() => setActiveTab("home")} />
+        ) : null;
+      case "unified-search":
+        return (
+          <UnifiedSearchScreen
+            onBack={() => setActiveTab("home")}
+            onCarClick={navigateToDetails}
+            onPartClick={(part) => { setSelectedPartId(part.id); setActiveTab("part-details"); }}
+            favorites={favorites}
+            toggleFavorite={toggleFavorite}
+            t={t}
+            user={user}
+          />
+        );
       case "add-car":
         return (
-          <AddCarScreen 
-            onBack={() => setActiveTab(editingCar ? "dealer-dashboard" : "profile")} 
+          <AddCarScreen
+            onBack={() => setActiveTab(editingCar ? "dealer-dashboard" : "profile")}
             onSuccess={() => setActiveTab(editingCar ? "dealer-dashboard" : "home")} 
             t={t} 
             initialCar={editingCar || undefined}
@@ -290,8 +365,8 @@ export default function App() {
         </motion.div>
       </AnimatePresence>
       
-      {activeTab !== "details" && activeTab !== "dealer" && activeTab !== "add-car" && activeTab !== "add-reel" && activeTab !== "smart-ai" && activeTab !== "admin" && activeTab !== "notifications" && activeTab !== "privacy-security" && activeTab !== "settings" && activeTab !== "terms" && activeTab !== "privacy" && activeTab !== "contact" && activeTab !== "featured-cars" && activeTab !== "all-dealers" && activeTab !== "search-results" && !isFeedMode && (
-        <BottomNav activeTab={activeTab === "details" || activeTab === "dealer" || activeTab === "add-car" || activeTab === "add-reel" || activeTab === "smart-ai" || activeTab === "admin" || activeTab === "notifications" || activeTab === "privacy-security" || activeTab === "settings" || activeTab === "terms" || activeTab === "privacy" || activeTab === "contact" || activeTab === "featured-cars" || activeTab === "all-dealers" || activeTab === "search-results" ? "home" : activeTab} setActiveTab={setActiveTab} t={t} />
+      {!NO_BOTTOM_NAV_SCREENS.has(activeTab) && !isFeedMode && (
+        <BottomNav activeTab={NO_BOTTOM_NAV_SCREENS.has(activeTab) ? "home" : activeTab} setActiveTab={setActiveTab} t={t} />
       )}
     </div>
   );
