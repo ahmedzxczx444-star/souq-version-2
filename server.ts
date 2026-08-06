@@ -41,8 +41,8 @@ const SUBSCRIPTION_SYSTEM_ENABLED = false;
 // Dealer categories (multi-branch/chain/importer/official-agent dashboards) and the
 // auto-parts marketplace ship dark behind these flags until each phase is verified in
 // production. Both default false: zero user-visible change until explicitly enabled.
-const DEALER_CATEGORIES_ENABLED = false;
-const PARTS_MARKETPLACE_ENABLED = false;
+const DEALER_CATEGORIES_ENABLED = true;
+const PARTS_MARKETPLACE_ENABLED = true;
 
 const PLANS = {
   free: {
