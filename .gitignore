@@ -6,3 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Local Claude task state
+.claude/scheduled_tasks.lock
+
+# Local Flutter source backup archive
+mobile-app-flutter-source.zip
