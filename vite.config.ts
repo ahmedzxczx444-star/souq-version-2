@@ -21,6 +21,12 @@ export default defineConfig(() => {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
+      // The Flutter project is not part of the web app. Its build writes
+      // short-lived temp dirs (build/, windows/flutter/ephemeral/, ...) that
+      // crash the watcher on Windows with "EBUSY: resource busy or locked, watch".
+      watch: {
+        ignored: ['**/mobile-app/**'],
+      },
     },
   };
 });
