@@ -67,8 +67,8 @@ class CarCardWidget extends StatelessWidget {
                   CircleAvatar(
                     radius: 16,
                     backgroundColor: AppColors.gray100,
-                    backgroundImage: car.dealerLogo != null && car.dealerLogo!.isNotEmpty
-                        ? CachedNetworkImageProvider(car.dealerLogo!)
+                    backgroundImage: car.dealerLogoImage != null
+                        ? CachedNetworkImageProvider(car.dealerLogoImage!)
                         : null,
                     child: car.dealerLogo == null || car.dealerLogo!.isEmpty
                         ? Text(car.make.isNotEmpty ? car.make[0] : '?',
@@ -102,6 +102,7 @@ class CarCardWidget extends StatelessWidget {
                 children: [
                   CachedNetworkImage(
                     imageUrl: car.coverImage,
+                    httpHeaders: carImageHeaders,
                     fit: BoxFit.cover,
                     placeholder: (_, __) => Container(color: AppColors.gray100),
                     errorWidget: (_, __, ___) => Container(
@@ -181,6 +182,7 @@ class CarCardWidget extends StatelessWidget {
                 children: [
                   CachedNetworkImage(
                     imageUrl: car.coverImage,
+                    httpHeaders: carImageHeaders,
                     fit: BoxFit.cover,
                     placeholder: (_, __) => Container(color: AppColors.gray100),
                     errorWidget: (_, __, ___) => Container(

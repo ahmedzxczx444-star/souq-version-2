@@ -47,4 +47,23 @@ extension CarDisplayX on Car {
   String get title => '$make $model';
   String get coverImage => images.isNotEmpty ? images.first : '';
   String get effectiveLocation => location.isNotEmpty ? location : (dealerLocation ?? '');
+
+  /// [dealerLogo] in a format Flutter's image codecs can decode. The backend's
+  /// default logos are DiceBear SVG avatars (server.ts), which a browser
+  /// renders natively but `Image` cannot ("Invalid image data"); DiceBear
+  /// serves the identical avatar as PNG from the sibling `/png` endpoint.
+  String? get dealerLogoImage {
+    final logo = dealerLogo;
+    if (logo == null || logo.isEmpty) return null;
+    final uri = Uri.tryParse(logo);
+    if (uri != null && uri.host == 'api.dicebear.com' && uri.path.endsWith('/svg')) {
+      return uri.replace(path: '${uri.path.substring(0, uri.path.length - 3)}png').toString();
+    }
+    return logo;
+  }
 }
+
+/// Sent with car photo requests. Image CDNs that negotiate format (the seed
+/// photos use Unsplash `auto=format`) fall back to the original file when no
+/// Accept header is sent — a ~3 MB PNG per photo instead of a ~0.5 MB WebP.
+const carImageHeaders = {'Accept': 'image/webp,image/png,image/jpeg,*/*;q=0.8'};

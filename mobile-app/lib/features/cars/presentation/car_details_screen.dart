@@ -58,7 +58,7 @@ class _CarDetailsScreenState extends ConsumerState<CarDetailsScreen> {
                         aspectRatio: 4 / 3,
                         child: car.images.isEmpty
                             ? Container(color: AppColors.gray100, child: const Icon(Icons.directions_car, size: 48, color: AppColors.gray400))
-                            : CachedNetworkImage(imageUrl: car.images[_activeImage], fit: BoxFit.cover),
+                            : CachedNetworkImage(imageUrl: car.images[_activeImage], httpHeaders: carImageHeaders, fit: BoxFit.cover),
                       ),
                       Positioned(
                         top: 40,
@@ -109,7 +109,7 @@ class _CarDetailsScreenState extends ConsumerState<CarDetailsScreen> {
                                     ),
                                   ),
                                   clipBehavior: Clip.antiAlias,
-                                  child: CachedNetworkImage(imageUrl: car.images[i], fit: BoxFit.cover),
+                                  child: CachedNetworkImage(imageUrl: car.images[i], httpHeaders: carImageHeaders, fit: BoxFit.cover),
                                 ),
                               ),
                             ),
@@ -179,7 +179,7 @@ class _CarDetailsScreenState extends ConsumerState<CarDetailsScreen> {
                                   radius: 22,
                                   backgroundColor: Colors.white10,
                                   backgroundImage:
-                                      car.dealerLogo != null && car.dealerLogo!.isNotEmpty ? CachedNetworkImageProvider(car.dealerLogo!) : null,
+                                      car.dealerLogoImage != null ? CachedNetworkImageProvider(car.dealerLogoImage!) : null,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
