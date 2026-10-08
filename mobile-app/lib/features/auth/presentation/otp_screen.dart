@@ -185,9 +185,15 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                         textAlign: TextAlign.center,
                         keyboardType: TextInputType.number,
                         maxLength: 1,
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                        textAlignVertical: TextAlignVertical.center,
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.gray900),
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        decoration: const InputDecoration(counterText: ''),
+                        // The theme's 16px horizontal padding leaves only 12px
+                        // of a 44px box for the digit, clipping it to a sliver.
+                        decoration: const InputDecoration(
+                          counterText: '',
+                          contentPadding: EdgeInsets.symmetric(vertical: 16),
+                        ),
                         onChanged: (value) {
                           if (value.isNotEmpty && i < 5) {
                             _digitFocus[i + 1].requestFocus();
