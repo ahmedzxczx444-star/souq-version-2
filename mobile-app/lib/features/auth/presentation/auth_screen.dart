@@ -274,6 +274,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           }),
                           child: Text(_mode == _AuthMode.login ? strings.createAccount : strings.signIn),
                         ),
+                      if (_mode == _AuthMode.login)
+                        TextButton(
+                          onPressed: () => context.go('/home'),
+                          child: Text(isAr ? 'تصفح بدون تسجيل' : 'Continue as guest'),
+                        ),
                     ],
                   ),
                 ),

@@ -35,8 +35,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       return;
     }
 
-    final loggedIn = ref.read(authProvider).valueOrNull != null;
-    context.go(loggedIn ? '/home' : '/login');
+    // Listings are public (as on the website): signed-out users land on
+    // Home too, and are asked to sign in only for favorites and the profile.
+    context.go('/home');
   }
 
   @override

@@ -12,6 +12,7 @@ import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/favorites_provider.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/models/car.dart';
+import '../../../shared/widgets/web_layout.dart';
 
 final _carDetailsProvider = FutureProvider.autoDispose.family((ref, int id) {
   return ref.watch(carRepositoryProvider).getById(id);
@@ -42,7 +43,8 @@ class _CarDetailsScreenState extends ConsumerState<CarDetailsScreen> {
     final isFavorite = favorites.contains(widget.carId);
 
     return Scaffold(
-      body: carAsync.when(
+      body: WebColumn(
+        child: carAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.emeraldAccent)),
         error: (e, _) => Center(child: Text('$e')),
         data: (car) {
@@ -238,6 +240,7 @@ class _CarDetailsScreenState extends ConsumerState<CarDetailsScreen> {
             ],
           );
         },
+      ),
       ),
     );
   }

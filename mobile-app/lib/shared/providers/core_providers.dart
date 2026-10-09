@@ -7,6 +7,7 @@ import '../../core/storage/app_prefs.dart';
 import '../../core/storage/token_storage.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/cars/data/car_repository.dart';
+import '../../features/dealers/data/dealer_repository.dart';
 import 'auth_provider.dart';
 
 /// Overridden in main.dart once SharedPreferences.getInstance() resolves —
@@ -33,6 +34,10 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(ref.watch(apiClientProvider)),
+);
+
+final dealerRepositoryProvider = Provider<DealerRepository>(
+  (ref) => DealerRepository(ref.watch(apiClientProvider)),
 );
 
 final carRepositoryProvider = Provider<CarRepository>(

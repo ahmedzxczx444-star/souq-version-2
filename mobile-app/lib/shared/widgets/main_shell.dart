@@ -19,8 +19,8 @@ class MainShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = ref.watch(stringsProvider);
     final tabs = [
-      (icon: Icons.home_rounded, label: strings.home),
-      (icon: Icons.play_circle_outline_rounded, label: strings.reels),
+      (icon: Icons.home_outlined, label: strings.home),
+      (icon: Icons.movie_outlined, label: strings.reels),
       (icon: Icons.favorite_border_rounded, label: strings.favorites),
       (icon: Icons.person_outline_rounded, label: strings.profile),
     ];
@@ -34,7 +34,7 @@ class MainShell extends ConsumerWidget {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: List.generate(tabs.length, (index) {
@@ -45,22 +45,46 @@ class MainShell extends ConsumerWidget {
                     index,
                     initialLocation: index == navigationShell.currentIndex,
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                  behavior: HitTestBehavior.opaque,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.topCenter,
                     children: [
-                      Icon(
-                        tab.icon,
-                        size: 24,
-                        color: isActive ? AppColors.black : AppColors.gray400,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        tab.label,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: isActive ? AppColors.black : AppColors.gray400,
+                      // `absolute -top-2 w-1 h-1 bg-black rounded-full`
+                      if (isActive)
+                        Positioned(
+                          top: -8,
+                          child: Container(
+                            width: 4,
+                            height: 4,
+                            decoration: const BoxDecoration(
+                              color: AppColors.black,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                         ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            tab.icon,
+                            size: 24,
+                            color: isActive
+                                ? AppColors.black
+                                : AppColors.gray400,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            tab.label,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: isActive
+                                  ? AppColors.black
+                                  : AppColors.gray400,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

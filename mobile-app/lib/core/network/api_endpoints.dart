@@ -21,6 +21,25 @@ class ApiConfig {
     defaultValue: 'http://127.0.0.1:3000',
   );
 
+  /// Why [baseUrl] is unusable for a store build, or null when it is fine.
+  ///
+  /// A phone cannot reach the developer's machine through `127.0.0.1`,
+  /// `localhost` or the Android emulator's `10.0.2.2`, and both stores
+  /// expect HTTPS. Only mobile release builds are checked — desktop and
+  /// debug builds keep working against a local backend.
+  static String? releaseProblem({required String url, required bool release, required bool mobile}) {
+    if (!release || !mobile) return null;
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.host.isEmpty) return 'API_BASE_URL is not a valid URL.';
+    const devHosts = {'127.0.0.1', 'localhost', '10.0.2.2', '0.0.0.0', '::1'};
+    if (devHosts.contains(uri.host)) {
+      return 'This build points at a development address (${uri.host}). '
+          'Rebuild with --dart-define=API_BASE_URL=https://<production API>.';
+    }
+    if (uri.scheme != 'https') return 'The production API must be served over HTTPS.';
+    return null;
+  }
+
   /// Makes a server-relative path (`/uploads/cars/x.jpg`) absolute against
   /// [baseUrl]. Anything else — an absolute http(s) URL, a `//host/...`
   /// protocol-relative URL, a data: URI, or an empty string — is returned
@@ -58,6 +77,14 @@ class ApiEndpoints {
   // Dealers
   static const dealers = '/api/dealers';
   static String dealerById(int id) => '/api/dealers/$id';
+  static String dealerFollow(int id) => '/api/dealers/$id/follow';
+  static String dealerFollowStatus(int id) => '/api/dealers/$id/follow-status';
+  static String dealerRate(int id) => '/api/dealers/$id/rate';
+
+  // Reels
+  static const reels = '/api/reels';
+  static String reelLike(int id) => '/api/reels/$id/like';
+  static String reelView(int id) => '/api/reels/$id/view';
 
   // Favorites
   static const favorites = '/api/favorites';

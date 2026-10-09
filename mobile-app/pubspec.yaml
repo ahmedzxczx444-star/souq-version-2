@@ -94,6 +94,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # Same hero photo as the website (src/assets/hero.jpg).
+  assets:
+    - assets/images/hero.jpg
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

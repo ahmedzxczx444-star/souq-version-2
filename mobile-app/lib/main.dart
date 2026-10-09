@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/l10n/app_strings.dart';
+import 'core/network/api_endpoints.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'shared/providers/core_providers.dart';
@@ -11,6 +13,19 @@ import 'shared/providers/language_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final configProblem = ApiConfig.releaseProblem(
+    url: ApiConfig.baseUrl,
+    release: kReleaseMode,
+    mobile: !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS),
+  );
+  if (configProblem != null) {
+    // Fail loudly instead of shipping an app where every request is refused.
+    runApp(_MisconfiguredApp(message: configProblem));
+    return;
+  }
+
   final prefs = await SharedPreferences.getInstance();
 
   runApp(
@@ -49,6 +64,38 @@ class SouqCarsApp extends ConsumerWidget {
           child: child ?? const SizedBox.shrink(),
         );
       },
+    );
+  }
+}
+
+class _MisconfiguredApp extends StatelessWidget {
+  const _MisconfiguredApp({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off_rounded, size: 48),
+                  const SizedBox(height: 16),
+                  const Text('Build configuration error', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  Text(message, textAlign: TextAlign.center),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

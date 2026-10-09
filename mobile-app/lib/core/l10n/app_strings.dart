@@ -250,3 +250,18 @@ class AppStrings {
 
   static AppStrings of(AppLanguage lang) => lang == AppLanguage.ar ? ar : en;
 }
+
+/// Buyer-marketplace copy (Home, dealer cards, dealer profile), taken
+/// verbatim from the same keys in src/constants/translations.ts.
+extension MarketplaceStrings on AppStrings {
+  bool get isArabic => identical(this, AppStrings.ar);
+
+  String get viewAll => isArabic ? 'عرض الكل' : 'View All';
+  String get findDreamRide => isArabic ? 'جد سيارة أحلامك اليوم' : 'Find your dream ride today';
+  String get topDealers => isArabic ? 'أفضل المعارض' : 'Top Dealers';
+  String get featuredCars => isArabic ? 'سيارات مميزة' : 'Featured Cars';
+  String get carsCount => isArabic ? 'سيارة' : 'Cars';
+  String get reviews => isArabic ? 'تقييم' : 'Reviews';
+  String get inventory => isArabic ? 'المخزون' : 'Inventory';
+  String get verifiedDealer => isArabic ? 'تاجر موثق' : 'Verified Dealer';
+}

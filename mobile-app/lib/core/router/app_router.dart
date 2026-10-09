@@ -10,9 +10,11 @@ import '../../features/cars/presentation/add_car_screen.dart';
 import '../../features/cars/presentation/car_details_screen.dart';
 import '../../features/cars/presentation/compare_cars_screen.dart';
 import '../../features/cars/presentation/favorites_screen.dart';
+import '../../features/cars/presentation/featured_cars_screen.dart';
 import '../../features/cars/presentation/home_screen.dart';
 import '../../features/cars/presentation/reels_screen.dart';
 import '../../features/cars/presentation/search_results_screen.dart';
+import '../../features/dealers/presentation/all_dealers_screen.dart';
 import '../../features/dealers/presentation/dealer_categories_screen.dart';
 import '../../features/dealers/presentation/dealer_dashboard_screen.dart';
 import '../../features/dealers/presentation/dealer_profile_screen.dart';
@@ -97,6 +99,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/dealer/:id',
         builder: (context, state) => DealerProfileScreen(dealerId: int.parse(state.pathParameters['id']!)),
       ),
+      GoRoute(path: '/dealers', builder: (context, state) => const AllDealersScreen()),
+      GoRoute(path: '/featured-cars', builder: (context, state) => const FeaturedCarsScreen()),
       GoRoute(path: '/ai-search', builder: (context, state) => const AiSearchScreen()),
       GoRoute(path: '/parts', builder: (context, state) => const PartsMarketplaceScreen()),
       GoRoute(path: '/compare', builder: (context, state) => const CompareCarsScreen()),

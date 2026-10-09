@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../core/network/api_endpoints.dart';
+import '../../core/network/image_urls.dart';
 import 'json_converters.dart';
 
 part 'car.freezed.dart';
@@ -54,19 +55,8 @@ extension CarDisplayX on Car {
   String get coverImage => images.isNotEmpty ? ApiConfig.resolveUrl(images.first) : '';
   String get effectiveLocation => location.isNotEmpty ? location : (dealerLocation ?? '');
 
-  /// [dealerLogo] in a format Flutter's image codecs can decode. The backend's
-  /// default logos are DiceBear SVG avatars (server.ts), which a browser
-  /// renders natively but `Image` cannot ("Invalid image data"); DiceBear
-  /// serves the identical avatar as PNG from the sibling `/png` endpoint.
-  String? get dealerLogoImage {
-    final logo = dealerLogo;
-    if (logo == null || logo.isEmpty) return null;
-    final uri = Uri.tryParse(logo);
-    if (uri != null && uri.host == 'api.dicebear.com' && uri.path.endsWith('/svg')) {
-      return uri.replace(path: '${uri.path.substring(0, uri.path.length - 3)}png').toString();
-    }
-    return ApiConfig.resolveUrl(logo);
-  }
+  /// [dealerLogo] in a form Flutter can load — see [displayImageUrl].
+  String? get dealerLogoImage => displayImageUrl(dealerLogo);
 }
 
 /// Sent with car photo requests. Image CDNs that negotiate format (the seed

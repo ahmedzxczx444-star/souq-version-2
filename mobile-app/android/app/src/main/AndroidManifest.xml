@@ -1,12 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- Dev backend runs on plain http:// (see ApiConfig.baseUrl / --dart-define=API_BASE_URL).
-         Restrict usesCleartextTraffic in a production build once the backend is served over https. -->
+    <!-- Release builds talk to the production API over https only. Plain http:// (a local
+         dev backend) is allowed for debug and profile builds in their own manifests. -->
     <application
         android:label="Souq Cars"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -44,6 +43,15 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- url_launcher targets used by the app: WhatsApp / map / video links, and the dialer. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+            <data android:scheme="tel"/>
         </intent>
     </queries>
 </manifest>
