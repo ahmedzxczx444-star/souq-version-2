@@ -12,3 +12,13 @@ coverage/
 
 # Local Flutter source backup archive
 mobile-app-flutter-source.zip
+
+# Runtime data: never commit databases or uploaded media.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+/uploads/
+/data/

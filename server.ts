@@ -27,13 +27,36 @@ import { createPartsOrdersRouter } from "./routes/partsOrders";
 import { classifyDomain } from "./ai/domainClassifier";
 import { searchParts, searchPartsByFilters, parsePartQuery } from "./ai/partsSearchEngine";
 import { respondWithPartsCandidates, buildDeterministicPartsReply } from "./ai/partsChat";
+import { loadConfig, ConfigError, AppConfig } from "./config";
+import {
+  accountBlockReason,
+  bumpTokenVersion,
+  ensureAdminAccount,
+  makeAsyncSafe,
+  revokeLegacySeedCredentials,
+  unusablePasswordHash,
+} from "./services/accounts";
 
 dotenv.config();
+
+// Resolve configuration first: in production a missing or example secret
+// stops the process here, before the database is touched.
+let config: AppConfig;
+try {
+  config = loadConfig();
+} catch (e) {
+  if (e instanceof ConfigError) {
+    console.error(e.message);
+    process.exit(1);
+  }
+  throw e;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("automarket.db");
+fs.mkdirSync(path.dirname(config.databasePath), { recursive: true });
+const db = new Database(config.databasePath);
 
 // Subscription and Promotion System Configuration (Feature Flag)
 const SUBSCRIPTION_SYSTEM_ENABLED = false;
@@ -438,6 +461,8 @@ try { db.exec("ALTER TABLE users ADD COLUMN subscription_start DATETIME"); } cat
 try { db.exec("ALTER TABLE users ADD COLUMN subscription_end DATETIME"); } catch (e) {}
 try { db.exec("ALTER TABLE cars ADD COLUMN is_promoted INTEGER DEFAULT 0"); } catch (e) {}
 try { db.exec("ALTER TABLE cars ADD COLUMN promotion_expires DATETIME"); } catch (e) {}
+// Bumped to end every session a user already has (logout-all, password reset).
+try { db.exec("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0"); } catch (e) {}
 
 try {
   db.exec("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0");
@@ -502,36 +527,30 @@ setInterval(clearExpiredOtps, 15 * 60 * 1000);
 const dealerCount = db.prepare("SELECT COUNT(*) as count FROM dealers").get() as { count: number };
 const carCount = db.prepare("SELECT COUNT(*) as count FROM cars").get() as { count: number };
 
-if (dealerCount.count === 0 || carCount.count === 0) {
-  console.log("Database empty or missing cars/dealers. Seeding...");
-  
-  // Clear existing to avoid ID mismatches if partially seeded
-  if (dealerCount.count === 0 || carCount.count === 0) {
-    db.prepare("DELETE FROM reels").run();
-    db.prepare("DELETE FROM cars").run();
-    db.prepare("DELETE FROM dealers").run();
-    // Keep super_admin if exists
-    db.prepare("DELETE FROM users WHERE role != 'super_admin'").run();
-  }
+const memberCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role != 'super_admin'").get() as { count: number };
+
+// Demo content is opt-in (SEED_DEMO_DATA=true), refused in production, and only
+// ever written into a database that has no dealers, cars or member accounts.
+// Startup never deletes rows: an existing database is always left as it is.
+if (config.seedDemoData && !config.isProduction && dealerCount.count === 0 && carCount.count === 0 && memberCount.count === 0) {
+  console.log("SEED_DEMO_DATA: seeding demo dealers and cars...");
 
   const insertUser = db.prepare("INSERT INTO users (email, password, name, role, is_verified) VALUES (?, ?, ?, ?, 1)");
 
-  // Check if admin exists
-  const adminExists = db.prepare("SELECT id FROM users WHERE email = ?").get("admin@automarket.com");
-  if (!adminExists) {
-    insertUser.run("admin@automarket.com", bcrypt.hashSync("admin123", 10), "مدير النظام", "super_admin");
-  }
+  // Demo dealer accounts get a random password nobody knows; they exist only
+  // to own the demo listings. Admin access comes from ADMIN_EMAIL/ADMIN_PASSWORD.
 
-  const dealer1User = insertUser.run("info@unitedmotors-eg.com", bcrypt.hashSync("password", 10), "المتحدة للسيارات", "dealer").lastInsertRowid;
-  const dealer2User = insertUser.run("sales@alnasrauto-eg.com", bcrypt.hashSync("password", 10), "مركز النصر للسيارات", "dealer").lastInsertRowid;
-  const dealer3User = insertUser.run("contact@rotanamotors-eg.com", bcrypt.hashSync("password", 10), "روتانا موتورز الفاخرة", "dealer").lastInsertRowid;
-  const dealer4User = insertUser.run("info@alexandria-auto-eg.com", bcrypt.hashSync("password", 10), "الإسكندرية أوتو", "dealer").lastInsertRowid;
+  const dealer1User = insertUser.run("info@unitedmotors-eg.com", unusablePasswordHash(), "المتحدة للسيارات", "dealer").lastInsertRowid;
+  const dealer2User = insertUser.run("sales@alnasrauto-eg.com", unusablePasswordHash(), "مركز النصر للسيارات", "dealer").lastInsertRowid;
+  const dealer3User = insertUser.run("contact@rotanamotors-eg.com", unusablePasswordHash(), "روتانا موتورز الفاخرة", "dealer").lastInsertRowid;
+  const dealer4User = insertUser.run("info@alexandria-auto-eg.com", unusablePasswordHash(), "الإسكندرية أوتو", "dealer").lastInsertRowid;
 
   const insertDealer = db.prepare("INSERT INTO dealers (user_id, name, logo, description, location, phone, whatsapp_number, rating, branches_count, reviews_count, is_luxury, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
   const d1 = insertDealer.run(dealer1User, "المتحدة للسيارات", "https://api.dicebear.com/7.x/initials/svg?seed=United%20Motors&backgroundColor=065f46", "معرض متخصص في السيارات الأوروبية والاقتصادية بخبرة تمتد لأكثر من 10 سنوات في السوق المصري.", "التجمع الخامس، القاهرة الجديدة", "+20 100 123 4567", "+20 100 123 4567", 4.6, 2, 0, 0, 'active').lastInsertRowid;
   const d2 = insertDealer.run(dealer2User, "مركز النصر للسيارات", "https://api.dicebear.com/7.x/initials/svg?seed=Al%20Nasr%20Auto&backgroundColor=1a4d3e", "معرض سيارات مستعملة وجديدة بأسعار تنافسية وضمان على كل سياراتنا.", "مدينة نصر، القاهرة", "+20 101 234 5678", "+20 101 234 5678", 4.4, 1, 0, 0, 'active').lastInsertRowid;
   const d3 = insertDealer.run(dealer3User, "روتانا موتورز الفاخرة", "https://api.dicebear.com/7.x/initials/svg?seed=Rotana%20Motors&backgroundColor=92400e", "معرض متخصص في السيارات الفاخرة والنادرة لعملائنا المميزين.", "الشيخ زايد، الجيزة", "+20 122 345 6789", "+20 122 345 6789", 4.9, 3, 0, 1, 'active').lastInsertRowid;
   const d4 = insertDealer.run(dealer4User, "الإسكندرية أوتو", "https://api.dicebear.com/7.x/initials/svg?seed=Alexandria%20Auto&backgroundColor=1e3a8a", "معرض سيارات موثوق يخدم عملاء الإسكندرية والمناطق المجاورة منذ عام 2015.", "سموحة، الإسكندرية", "+20 111 456 7890", "+20 111 456 7890", 4.3, 1, 0, 0, 'active').lastInsertRowid;
+  db.prepare("UPDATE dealers SET status = 'active' WHERE id IN (?, ?, ?, ?)").run(d1, d2, d3, d4);
 
   const insertCar = db.prepare("INSERT INTO cars (dealer_id, make, model, year, price, mileage, location, fuel_type, transmission, description, images, featured) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
   insertCar.run(d1, "BMW", "320i", 2022, 2450000, 18000, "التجمع الخامس، القاهرة الجديدة", "بنزين", "Automatic", "بي إم دبليو 320i موديل 2022 باللون الأسود، فبريكا بالكامل، صيانة توكيل، اقتصادية في استهلاك الوقود وأداء رياضي ممتاز.", JSON.stringify(["https://images.unsplash.com/photo-1580273916550-e323be2ae537?q=80&w=1200&auto=format&fit=crop", "https://images.unsplash.com/photo-1600268330186-76564be81357?q=80&w=1200&auto=format&fit=crop"]), 0);
@@ -548,9 +567,21 @@ if (dealerCount.count === 0 || carCount.count === 0) {
   const insertReel = db.prepare("INSERT INTO reels (dealer_id, car_id, video_url, caption) VALUES (?, ?, ?, ?)");
   insertReel.run(d1, 1, "https://assets.mixkit.co/videos/preview/mixkit-fast-car-driving-on-a-highway-at-night-34505-large.mp4", "بي إم دبليو 320i جاهزة للمعاينة 🚗");
   insertReel.run(d3, 6, "https://assets.mixkit.co/videos/preview/mixkit-white-car-driving-on-a-winding-road-in-the-mountains-34504-large.mp4", "رولز رويس غوست في أبهى صورها 🏎️");
-} else {
-  // Repair: Ensure all dealers are active if they were stuck in pending
-  db.prepare("UPDATE dealers SET status = 'active' WHERE status = 'pending'").run();
+}
+
+// Dealers stay 'pending' until an admin approves them (PUT /api/admin/dealers/:id/approve);
+// startup must never change a dealer's status.
+
+{
+  const adminResult = ensureAdminAccount(db, config);
+  if (adminResult === "created") console.log("[accounts] Created the administrator account from ADMIN_EMAIL.");
+  if (adminResult === "reset") console.log("[accounts] Administrator password reset from ADMIN_PASSWORD.");
+  const revoked = revokeLegacySeedCredentials(db, config);
+  if (revoked > 0) console.warn(`[accounts] Disabled the passwords of ${revoked} legacy seed account(s).`);
+  const adminCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'super_admin'").get() as { count: number };
+  if (adminCount.count === 0) {
+    console.warn("[accounts] No administrator account exists. Set ADMIN_EMAIL and ADMIN_PASSWORD to create one.");
+  }
 }
 
 async function startServer() {
@@ -558,8 +589,23 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
   const wss = new WebSocketServer({ server });
-  const PORT = Number(process.env.PORT) || 3000;
-  const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key";
+  const PORT = config.port;
+  const JWT_SECRET = config.jwtSecret;
+
+  // Behind a platform proxy the client IP is in X-Forwarded-For; without this
+  // every visitor would share one rate-limit bucket.
+  app.set("trust proxy", config.trustProxy);
+
+  // `tv` ties a token to the user's current token_version, so sessions can be revoked.
+  const signToken = (user: any, dealerId: any) =>
+    jwt.sign(
+      { id: user.id, email: user.email, name: user.name, role: user.role, dealerId, tv: user.token_version || 0 },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+  const normalizeEmail = (value: unknown): string | false =>
+    typeof value === "string" ? validator.normalizeEmail(value) : false;
 
   // Gemini client stays server-side only - never expose the key to the browser.
   // GEMINI_API_KEY is the canonical name; the others are accepted for backward
@@ -576,9 +622,9 @@ async function startServer() {
   console.log(`Configuring server on port ${PORT}...`);
 
   // Multer configuration for video uploads
-  const uploadDir = path.join(process.cwd(), "uploads", "reels");
-  const carImagesDir = path.join(process.cwd(), "uploads", "cars");
-  const partImagesDir = path.join(process.cwd(), "uploads", "parts");
+  const uploadDir = path.join(config.uploadsDir, "reels");
+  const carImagesDir = path.join(config.uploadsDir, "cars");
+  const partImagesDir = path.join(config.uploadsDir, "parts");
 
   [uploadDir, carImagesDir, partImagesDir].forEach(dir => {
     if (!fs.existsSync(dir)) {
@@ -613,8 +659,9 @@ async function startServer() {
     },
     fileFilter: (req, file, cb) => {
       const allowedTypes = [".mp4", ".mov"];
+      const allowedMimeTypes = ["video/mp4", "video/quicktime"];
       const ext = path.extname(file.originalname).toLowerCase();
-      if (allowedTypes.includes(ext)) {
+      if (allowedTypes.includes(ext) && allowedMimeTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
         cb(new Error("Only .mp4 and .mov formats are allowed"));
@@ -637,7 +684,23 @@ async function startServer() {
     },
   });
 
-  app.use(cors());
+  // Requests without an Origin header (the mobile apps, server-to-server) are
+  // not subject to CORS. Browsers: the site itself is same-origin; other
+  // origins must be listed in CORS_ORIGINS. Outside production any origin is
+  // accepted so local tools keep working.
+  app.use(cors({
+    origin: config.isProduction ? (config.corsOrigins.length > 0 ? config.corsOrigins : false) : true,
+  }));
+
+  // Liveness + database check for the hosting platform.
+  app.get("/api/health", (req, res) => {
+    try {
+      db.prepare("SELECT 1").get();
+      res.json({ status: "ok", uptime: Math.round(process.uptime()) });
+    } catch (e) {
+      res.status(503).json({ status: "unavailable" });
+    }
+  });
   app.use(helmet({
     contentSecurityPolicy: false, // Disable CSP for simplicity in this environment if needed, or configure properly
     xFrameOptions: false,
@@ -649,7 +712,7 @@ async function startServer() {
   // Rate limiting for auth routes
   const authLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 5, // 5 requests per minute
+    max: config.authRateLimitMax, // 5 requests per minute (not overridable in production)
     message: { error: "Too many requests" },
     standardHeaders: true,
     legacyHeaders: false,
@@ -674,19 +737,33 @@ async function startServer() {
     }
   };
 
-  app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+  app.use("/uploads", express.static(config.uploadsDir, { dotfiles: "deny", index: false }));
 
   // Auth Middleware
   const authenticate = (req: any, res: any, next: any) => {
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ error: "Unauthorized" });
+    let decoded: any;
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      req.user = decoded;
-      next();
+      decoded = jwt.verify(token, JWT_SECRET);
     } catch (e) {
-      res.status(401).json({ error: "Invalid or expired token" });
+      return res.status(401).json({ error: "Invalid or expired token" });
     }
+
+    // A valid signature is not enough: the account must still exist, be
+    // verified, not banned or suspended, and the token must not predate a
+    // logout-all / password reset. Role comes from the database, not the token.
+    const account = db.prepare(
+      "SELECT id, email, name, role, is_verified, COALESCE(token_version, 0) as token_version FROM users WHERE id = ?"
+    ).get(decoded?.id) as any;
+    if (!account || (decoded.tv || 0) !== account.token_version || account.is_verified === 0) {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+    const blocked = accountBlockReason(db, account);
+    if (blocked) return res.status(401).json({ error: blocked, accountBlocked: true });
+
+    req.user = { ...decoded, email: account.email, name: account.name, role: account.role };
+    next();
   };
 
   const isAdmin = (req: any, res: any, next: any) => {
@@ -760,7 +837,7 @@ async function startServer() {
       FROM cars
       JOIN dealers ON cars.dealer_id = dealers.id
       LEFT JOIN users ON dealers.user_id = users.id
-      WHERE dealers.status = 'active'
+      WHERE dealers.status = 'active' AND cars.status != 'hidden'
       ORDER BY
         (CASE WHEN ? THEN cars.is_promoted ELSE 0 END) DESC,
         (CASE WHEN ? THEN
@@ -792,12 +869,6 @@ async function startServer() {
   });
 
   app.get("/api/cars/:id", (req, res) => {
-    // Increment views
-    try {
-      db.prepare("UPDATE cars SET views = views + 1 WHERE id = ?").run(req.params.id);
-    } catch (e) {
-      console.error("Failed to increment views:", e);
-    }
 
     const car = db.prepare(`
       SELECT cars.*, dealers.name as dealer_name, dealers.logo as dealer_logo, dealers.location as dealer_location, dealers.phone as dealer_phone, dealers.whatsapp_number as dealer_whatsapp, dealers.user_id as dealer_user_id
@@ -805,7 +876,18 @@ async function startServer() {
       JOIN dealers ON cars.dealer_id = dealers.id
       WHERE cars.id = ?
     `).get(req.params.id) as any;
-    if (!car) return res.status(404).json({ error: "Car not found" });
+    if (!car || car.status === 'hidden') return res.status(404).json({ error: "Car not found" });
+    // Listings of dealers who are not (or no longer) approved are not public.
+    const owner = db.prepare("SELECT status FROM dealers WHERE id = ?").get(car.dealer_id) as any;
+    if (!owner || owner.status !== 'active') return res.status(404).json({ error: "Car not found" });
+
+    // Increment views (only for listings that are actually shown)
+    try {
+      db.prepare("UPDATE cars SET views = views + 1 WHERE id = ?").run(req.params.id);
+    } catch (e) {
+      console.error("Failed to increment views:", e);
+    }
+
     let images = [];
     try {
       images = car.images ? JSON.parse(car.images) : [];
@@ -1321,9 +1403,9 @@ async function startServer() {
       WHERE d.id = ?
     `).get(req.params.id) as any;
     
-    const cars = db.prepare("SELECT * FROM cars WHERE dealer_id = ?").all(req.params.id);
+    const cars = db.prepare("SELECT * FROM cars WHERE dealer_id = ? AND status != 'hidden'").all(req.params.id);
     const branches = db.prepare("SELECT * FROM dealer_branches WHERE dealer_id = ?").all(req.params.id);
-    if (!dealer) return res.status(404).json({ error: "Dealer not found" });
+    if (!dealer || dealer.status !== 'active') return res.status(404).json({ error: "Dealer not found" });
     
     res.json({ 
       ...dealer, 
@@ -1426,7 +1508,7 @@ async function startServer() {
       FROM favorites
       JOIN cars ON favorites.car_id = cars.id
       JOIN dealers ON cars.dealer_id = dealers.id
-      WHERE favorites.user_id = ?
+      WHERE favorites.user_id = ? AND cars.status != 'hidden' AND dealers.status = 'active'
     `).all(req.user.id);
     res.json(favorites.map((c: any) => {
       let images = [];
@@ -1469,11 +1551,15 @@ async function startServer() {
 
   app.post("/api/auth/register", authLimiter, async (req, res) => {
     let { email, password, name, role, phone, whatsapp_number, branches_count, address, latitude, longitude, logo, captchaToken, business_type, dealer_category } = req.body;
-    email = validator.normalizeEmail(email);
+    email = normalizeEmail(email);
 
     // Input Validation
-    if (!email || !password || !name) {
+    if (!email || typeof password !== "string" || !password || typeof name !== "string" || !name) {
       return res.status(400).json({ error: "All required fields must be filled" });
+    }
+    // Only buyers and dealers can sign up; admin accounts are never self-service.
+    if (role !== undefined && role !== "user" && role !== "dealer") {
+      return res.status(400).json({ error: "Invalid role" });
     }
     if (!validator.isEmail(email)) {
       return res.status(400).json({ error: "Invalid email format" });
@@ -1592,7 +1678,7 @@ async function startServer() {
   // Resend uses the exact same underlying logic — there is only one send path.
   const handleSendOtp = async (req: any, res: any) => {
     let { email, purpose } = req.body;
-    email = validator.normalizeEmail(email);
+    email = normalizeEmail(email);
     const allowedPurposes = ["register", "forgot_password", "change_email"];
 
     if (!email || !validator.isEmail(email)) {
@@ -1623,7 +1709,7 @@ async function startServer() {
 
   app.post("/api/auth/verify-otp", authLimiter, async (req: any, res) => {
     let { email, otp, purpose } = req.body;
-    email = validator.normalizeEmail(email);
+    email = normalizeEmail(email);
 
     if (!email || !otp || !purpose) {
       return res.status(400).json({ error: "Email, code, and purpose are required" });
@@ -1639,6 +1725,11 @@ async function startServer() {
       if (!user) {
         return res.status(404).json({ error: "Account not found" });
       }
+      // Verifying an email must never lift a ban.
+      const blockedReason = accountBlockReason(db, user);
+      if (blockedReason) {
+        return res.status(403).json({ error: blockedReason });
+      }
       db.prepare("UPDATE users SET is_verified = 1 WHERE id = ?").run(user.id);
 
       let dealerId = null;
@@ -1648,7 +1739,7 @@ async function startServer() {
       }
 
       logActivity("Email verified", user.id, `User ${user.id} verified their email via OTP`);
-      const token = jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role, dealerId }, JWT_SECRET, { expiresIn: '1h' });
+      const token = signToken(user, dealerId);
       return res.json({
         success: true,
         token,
@@ -1661,7 +1752,10 @@ async function startServer() {
 
   app.post("/api/auth/forgot-password", authLimiter, async (req, res) => {
     let { email } = req.body;
-    email = validator.normalizeEmail(email);
+    email = normalizeEmail(email);
+    if (!email) {
+      return res.status(400).json({ error: "Valid email is required" });
+    }
     const user = db.prepare("SELECT id, name FROM users WHERE email = ?").get(email) as any;
 
     if (!user) {
@@ -1678,9 +1772,9 @@ async function startServer() {
 
   app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
     let { email, otp, password } = req.body;
-    email = validator.normalizeEmail(email);
+    email = normalizeEmail(email);
 
-    if (!email || !otp || !password) {
+    if (!email || !otp || typeof password !== "string" || !password) {
       return res.status(400).json({ error: "Email, code, and new password are required" });
     }
     if (password.length < 6) {
@@ -1699,16 +1793,18 @@ async function startServer() {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashedPassword, user.id);
+    // A password reset signs the account out everywhere.
+    bumpTokenVersion(db, user.id);
 
     res.json({ success: true });
   });
 
   app.post("/api/auth/login", authLimiter, async (req, res) => {
     let { email, password, captchaToken } = req.body;
-    email = validator.normalizeEmail(email);
+    email = normalizeEmail(email);
 
     // Input Validation
-    if (!email || !password) {
+    if (!email || typeof password !== "string" || !password) {
       return res.status(400).json({ error: "Email and password are required" });
     }
 
@@ -1719,8 +1815,14 @@ async function startServer() {
 
     const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email) as any;
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      logActivity("Failed login attempt", 0, `Failed login attempt for email: ${email}`);
+      if (user) logActivity("Failed login attempt", user.id, "Wrong password");
       return res.status(401).json({ error: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
+    }
+
+    const blockedReason = accountBlockReason(db, user);
+    if (blockedReason) {
+      logActivity("Blocked login attempt", user.id, `Suspended account tried to log in: ${user.id}`);
+      return res.status(403).json({ error: blockedReason, accountBlocked: true });
     }
 
     if (!user.is_verified) {
@@ -1739,7 +1841,7 @@ async function startServer() {
     }
 
     logActivity("Successful login", user.id, `User ${user.id} logged in`);
-    const token = jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role, dealerId }, JWT_SECRET, { expiresIn: '1h' });
+    const token = signToken(user, dealerId);
     res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, dealerId } });
   });
 
@@ -1757,8 +1859,11 @@ async function startServer() {
   // Privacy & Security API
   app.post("/api/auth/change-password", authenticate, async (req: any, res) => {
     const { currentPassword, newPassword } = req.body;
+    if (typeof currentPassword !== "string" || typeof newPassword !== "string" || newPassword.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
     const user = db.prepare("SELECT password FROM users WHERE id = ?").get(req.user.id) as any;
-    
+
     if (!user || !(await bcrypt.compare(currentPassword, user.password))) {
       return res.status(400).json({ error: "كلمة المرور الحالية غير صحيحة" });
     }
@@ -1771,6 +1876,8 @@ async function startServer() {
   });
 
   app.post("/api/auth/logout-all", authenticate, (req: any, res) => {
+    // Ends every session, including this one: all tokens issued so far stop working.
+    bumpTokenVersion(db, req.user.id);
     logActivity("Logout from all devices", req.user.id, "User requested logout from all devices");
     res.json({ success: true });
   });
@@ -1816,7 +1923,9 @@ async function startServer() {
     if (!dealer) return res.status(404).json({ error: "Dealer profile not found" });
     if (dealer.status !== 'active') return res.status(403).json({ error: "Your account is pending approval" });
 
-    const { make, model, year, price, mileage, location, fuel_type, transmission, description, images, video_url, status } = req.body;
+    const { make, model, year, price, mileage, location, fuel_type, transmission, description, images, video_url } = req.body;
+    // Dealers choose between the public states; 'hidden' is an admin moderation state.
+    const status = ["available", "reserved", "sold"].includes(req.body.status) ? req.body.status : "available";
     
     // Validation
     if (!images || !Array.isArray(images) || images.length === 0) {
@@ -2135,13 +2244,19 @@ async function startServer() {
   app.put("/api/cars/:id", authenticate, (req: any, res) => {
     if (req.user.role !== 'dealer') return res.status(403).json({ error: "Only dealers can edit cars" });
     
-    const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(req.user.id) as any;
-    const car = db.prepare("SELECT dealer_id FROM cars WHERE id = ?").get(req.params.id) as any;
-    
+    const dealer = db.prepare("SELECT id, status FROM dealers WHERE user_id = ?").get(req.user.id) as any;
+    const car = db.prepare("SELECT dealer_id, status FROM cars WHERE id = ?").get(req.params.id) as any;
+
+    if (!dealer) return res.status(404).json({ error: "Dealer profile not found" });
     if (!car) return res.status(404).json({ error: "Car not found" });
     if (car.dealer_id !== dealer.id) return res.status(403).json({ error: "Unauthorized to edit this car" });
+    if (dealer.status !== 'active') return res.status(403).json({ error: "Your account is pending approval" });
 
-    const { make, model, year, price, mileage, location, fuel_type, transmission, description, images, status } = req.body;
+    const { make, model, year, price, mileage, location, fuel_type, transmission, description, images } = req.body;
+    // A listing an admin has hidden stays hidden: editing it cannot republish it.
+    const status = car.status === 'hidden'
+      ? 'hidden'
+      : (["available", "reserved", "sold"].includes(req.body.status) ? req.body.status : "available");
     
     // Validation
     if (!images || !Array.isArray(images) || images.length === 0) {
@@ -2246,8 +2361,16 @@ async function startServer() {
   });
 
   app.put("/api/admin/cars/:id/hide", authenticate, isAdmin, (req: any, res) => {
-    db.prepare("UPDATE cars SET status = 'hidden' WHERE id = ?").run(req.params.id);
+    const result = db.prepare("UPDATE cars SET status = 'hidden' WHERE id = ?").run(req.params.id);
+    if (result.changes === 0) return res.status(404).json({ error: "Car not found" });
     logActivity("Admin hid car", req.user.id, `Admin hid car ID: ${req.params.id}`);
+    res.json({ success: true });
+  });
+
+  app.put("/api/admin/cars/:id/unhide", authenticate, isAdmin, (req: any, res) => {
+    const result = db.prepare("UPDATE cars SET status = 'available' WHERE id = ? AND status = 'hidden'").run(req.params.id);
+    if (result.changes === 0) return res.status(404).json({ error: "Hidden car not found" });
+    logActivity("Admin unhid car", req.user.id, `Admin unhid car ID: ${req.params.id}`);
     res.json({ success: true });
   });
 
@@ -2273,7 +2396,8 @@ async function startServer() {
     const dealer = db.prepare("SELECT name, user_id FROM dealers WHERE id = ?").get(req.params.id) as any;
     if (dealer) {
       db.prepare("UPDATE dealers SET status = 'active' WHERE id = ?").run(req.params.id);
-      db.prepare("UPDATE users SET is_verified = 1 WHERE id = ?").run(dealer.user_id);
+      // Restores accounts suspended by the old mechanism (is_verified = 0); never lifts a ban (-1).
+      db.prepare("UPDATE users SET is_verified = 1 WHERE id = ? AND is_verified = 0").run(dealer.user_id);
       logActivity("Admin approved dealer", req.user.id, `Admin approved dealer: ${dealer.name} (ID: ${req.params.id})`);
       createNotification(dealer.user_id, "approval", "تمت الموافقة على حساب المعرض الخاص بك بنجاح!");
       res.json({ success: true });
@@ -2296,7 +2420,10 @@ async function startServer() {
   app.put("/api/admin/dealers/:id/suspend", authenticate, isAdmin, (req: any, res) => {
     const dealer = db.prepare("SELECT name, user_id FROM dealers WHERE id = ?").get(req.params.id) as any;
     if (dealer) {
-      db.prepare("UPDATE users SET is_verified = 0 WHERE id = ?").run(dealer.user_id);
+      // Suspension lives on the dealer record. (Marking the user "unverified",
+      // as before, let the dealer lift it by repeating email verification.)
+      db.prepare("UPDATE dealers SET status = 'suspended' WHERE id = ?").run(req.params.id);
+      bumpTokenVersion(db, dealer.user_id);
       logActivity("Admin suspended dealer", req.user.id, `Admin suspended dealer: ${dealer.name} (ID: ${req.params.id})`);
       res.json({ success: true });
     } else {
@@ -2324,13 +2451,25 @@ async function startServer() {
   });
 
   app.put("/api/admin/users/:id/ban", authenticate, isAdmin, (req: any, res) => {
+    const target = db.prepare("SELECT id, role FROM users WHERE id = ?").get(req.params.id) as any;
+    if (!target) return res.status(404).json({ error: "User not found" });
+    if (target.role === 'super_admin') return res.status(400).json({ error: "Administrator accounts cannot be banned" });
     db.prepare("UPDATE users SET is_verified = -1 WHERE id = ?").run(req.params.id);
+    bumpTokenVersion(db, req.params.id);
     logActivity("Admin banned user", req.user.id, `Admin banned user ID: ${req.params.id}`);
     res.json({ success: true });
   });
 
   app.delete("/api/admin/users/:id", authenticate, isAdmin, (req: any, res) => {
-    db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
+    const target = db.prepare("SELECT id, role FROM users WHERE id = ?").get(req.params.id) as any;
+    if (!target) return res.status(404).json({ error: "User not found" });
+    if (target.role === 'super_admin') return res.status(400).json({ error: "Administrator accounts cannot be deleted" });
+    try {
+      db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
+    } catch (e) {
+      // Other records (listings, activity, favorites) still reference this account.
+      return res.status(409).json({ error: "This account has related records and cannot be deleted. Ban it instead." });
+    }
     logActivity("Admin deleted user", req.user.id, `Admin deleted user ID: ${req.params.id}`);
     res.json({ success: true });
   });
@@ -2368,7 +2507,7 @@ async function startServer() {
     if (authHeader) {
       try {
         const token = authHeader.split(" ")[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret") as any;
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
         userId = decoded.id;
       } catch (e) {}
     }
@@ -2430,7 +2569,12 @@ async function startServer() {
   });
 
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  // Async route handlers must not be able to crash the process (see makeAsyncSafe).
+  makeAsyncSafe((app as any)._router);
+
+  if (config.isTest) {
+    // Tests exercise the API only.
+  } else if (!config.isProduction) {
     console.log("Initializing Vite middleware...");
     try {
       const vite = await createViteServer({
@@ -2450,12 +2594,33 @@ async function startServer() {
     });
   }
 
+  // Last resort: malformed JSON, oversized bodies and unexpected failures get
+  // a JSON answer with no stack trace or internal detail.
+  app.use((err: any, req: any, res: any, next: any) => {
+    if (res.headersSent) return next(err);
+    const status = Number(err?.status || err?.statusCode) || 500;
+    if (status >= 500) {
+      console.error(`Unhandled error on ${req.method} ${req.path}:`, err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+    const message = err?.type === "entity.parse.failed" ? "Invalid JSON body"
+      : err?.type === "entity.too.large" ? "Request body is too large"
+      : "Bad request";
+    res.status(status).json({ error: message });
+  });
+
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`Server is running and listening on http://0.0.0.0:${PORT}`);
   });
 }
 
 console.log("Executing startServer()...");
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+});
+
 startServer().catch(err => {
   console.error("Critical error during server startup:", err);
+  // Exit so the hosting platform sees the failure instead of a process that never listens.
+  process.exit(1);
 });

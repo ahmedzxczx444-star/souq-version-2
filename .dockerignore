@@ -1,0 +1,17 @@
+.git
+node_modules
+dist
+mobile-app
+tests
+uploads
+data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.env
+.env.*
+!.env.example
+*.zip
+*.log
+.claude
