@@ -529,10 +529,22 @@ const carCount = db.prepare("SELECT COUNT(*) as count FROM cars").get() as { cou
 
 const memberCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role != 'super_admin'").get() as { count: number };
 
-// Demo content is opt-in (SEED_DEMO_DATA=true), refused in production, and only
-// ever written into a database that has no dealers, cars or member accounts.
+// An empty database in production is either a first launch or a sign that the
+// persistent volume is not attached (which would silently replace the live
+// catalogue with nothing). Starting empty therefore has to be an explicit choice.
+if (config.isProduction && !config.seedDemoDataConfigured && dealerCount.count === 0 && carCount.count === 0 && memberCount.count === 0) {
+  console.error(
+    `The database at ${config.databasePath} is empty. If this is not a first launch, the persistent volume is ` +
+    "probably not mounted. Otherwise set SEED_DEMO_DATA=true to load the demo dealers and cars, or " +
+    "SEED_DEMO_DATA=false to start with an empty catalogue."
+  );
+  process.exit(1);
+}
+
+// Demo content is opt-in (SEED_DEMO_DATA=true) and only ever written into a
+// database that has no dealers, cars or member accounts.
 // Startup never deletes rows: an existing database is always left as it is.
-if (config.seedDemoData && !config.isProduction && dealerCount.count === 0 && carCount.count === 0 && memberCount.count === 0) {
+if (config.seedDemoData && dealerCount.count === 0 && carCount.count === 0 && memberCount.count === 0) {
   console.log("SEED_DEMO_DATA: seeding demo dealers and cars...");
 
   const insertUser = db.prepare("INSERT INTO users (email, password, name, role, is_verified) VALUES (?, ?, ?, ?, 1)");

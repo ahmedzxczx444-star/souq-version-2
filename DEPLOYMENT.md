@@ -31,6 +31,7 @@ Set these in the platform, never in the repository.
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | first deploy | creates the administrator; password 12+ characters. Remove `ADMIN_PASSWORD` afterwards |
 | `ADMIN_PASSWORD_FORCE_RESET` | no | `true` once, to replace an existing admin's password |
 | `CORS_ORIGINS` | no | only if another website must call the API from the browser |
+| `SEED_DEMO_DATA` | first deploy | `true` loads the demo dealers and cars into an empty database, `false` starts empty. With an empty database and no value the server refuses to start (protection against a missing volume) |
 | `GEMINI_API_KEY` | no | enables AI search |
 | `RECAPTCHA_SECRET` | no | leave unset — the mobile apps do not send captcha tokens |
 | `PORT` | no | set by the platform; defaults to 3000 |
@@ -43,7 +44,8 @@ built-in secret.
 
 1. Create a project from this GitHub repository. `railway.json` selects the
    Dockerfile build and the `/api/health` health check.
-2. Add a **Volume** to the service, mounted at `/data`.
+2. Add a **Volume** to the service, mounted at `/data`. (The Dockerfile has no
+   `VOLUME` instruction on purpose — Railway rejects Dockerfiles that contain one.)
 3. Add the variables above.
 4. Deploy, then open `https://<your domain>/api/health` — it must answer
    `{"status":"ok",...}`.
@@ -62,7 +64,8 @@ Keep the service at one replica.
 
 ## First start on a new database
 
-- The schema is created automatically. No demo data is written in production.
+- The schema is created automatically. The database starts empty unless
+  `SEED_DEMO_DATA=true` is set, which writes the demo dealers and cars once.
 - No account exists until `ADMIN_EMAIL` / `ADMIN_PASSWORD` create the admin.
 - Dealers who register stay `pending` until an admin approves them.
 

@@ -21,8 +21,10 @@ ENV NODE_ENV=production \
     DATABASE_PATH=/data/automarket.db \
     UPLOADS_DIR=/data/uploads
 
-# /data must be a persistent volume: it holds the SQLite database and all uploaded media.
-VOLUME ["/data"]
+# /data must be a persistent volume: it holds the SQLite database and all uploaded
+# media. It is attached by the platform (Railway: service -> Volumes -> mount path
+# /data). There is deliberately no VOLUME instruction here: Railway rejects
+# Dockerfiles that contain one.
 
 EXPOSE 3000
 

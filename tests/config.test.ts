@@ -52,8 +52,9 @@ test("production requires a Brevo API key of the right kind and a sender", () =>
   assert.match(problemsOf(prodEnv({ BREVO_SENDER_EMAIL: undefined })).join("\n"), /BREVO_SENDER_EMAIL is required/);
 });
 
-test("production rejects demo seeding, placeholder captcha and rate-limit overrides", () => {
-  assert.match(problemsOf(prodEnv({ SEED_DEMO_DATA: "true" })).join("\n"), /SEED_DEMO_DATA/);
+test("production rejects placeholder captcha and rate-limit overrides; demo seeding is opt-in", () => {
+  assert.equal(loadConfig(prodEnv(), "/app").seedDemoData, false);
+  assert.equal(loadConfig(prodEnv({ SEED_DEMO_DATA: "true" }), "/app").seedDemoData, true);
   assert.match(problemsOf(prodEnv({ RECAPTCHA_SECRET: "your-recaptcha-secret-key" })).join("\n"), /RECAPTCHA_SECRET/);
   assert.match(problemsOf(prodEnv({ AUTH_RATE_LIMIT_MAX: "1000" })).join("\n"), /AUTH_RATE_LIMIT_MAX/);
 });

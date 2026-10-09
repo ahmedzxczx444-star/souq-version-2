@@ -397,6 +397,39 @@ describe("restart and data safety", () => {
     }
   });
 
+  test("production mode: starts with real settings, seeds only an empty database once, and keeps data across restarts", async () => {
+    const dir = makeTempDir();
+    const productionEnv = {
+      NODE_ENV: "production",
+      JWT_SECRET: "t".repeat(20) + "0a1b2c3d4e5f6a7b8c9d",
+      // Format-valid placeholder: no email is sent by this test.
+      BREVO_API_KEY: "xkeysib-test-value-not-a-real-key",
+      BREVO_SENDER_EMAIL: "no-reply@example.com",
+      AUTH_RATE_LIMIT_MAX: "",
+      SEED_DEMO_DATA: "true",
+    };
+
+    let instance = await startTestServer({ dir, env: productionEnv });
+    const firstCars = await api(instance, "GET", "/api/cars");
+    assert.equal(firstCars.json.length, 10);
+    assert.equal((await api(instance, "GET", "/api/health")).json.status, "ok");
+    assert.equal((await login(instance, instance.adminEmail, instance.adminPassword)).status, 200);
+    // Foreign websites get no CORS permission in production.
+    const foreign = await fetch(instance.baseUrl + "/api/cars", { headers: { Origin: "https://other.example" } });
+    assert.equal(foreign.headers.get("access-control-allow-origin"), null);
+    const member = createUser(instance);
+    await instance.stop();
+
+    instance = await startTestServer({ dir, env: productionEnv });
+    try {
+      assert.equal((await api(instance, "GET", "/api/cars")).json.length, 10, "not seeded twice, nothing lost");
+      assert.equal((await api(instance, "GET", "/api/dealers")).json.length, 4);
+      assert.equal((await login(instance, member.email, member.password)).status, 200, "accounts survive a redeploy on the same volume");
+    } finally {
+      await instance.stop();
+    }
+  });
+
   test("production refuses to start without real secrets and creates no database", async () => {
     const dir = makeTempDir();
     const dbPath = path.join(dir, "prod.db");
@@ -411,6 +444,28 @@ describe("restart and data safety", () => {
     assert.match(output(), /JWT_SECRET is required in production/);
     assert.match(output(), /BREVO_API_KEY is required in production/);
     assert.equal(fs.existsSync(dbPath), false);
+  });
+
+  test("production will not silently start on an empty database", async () => {
+    const dir = makeTempDir();
+    const { child, output } = spawnServer(
+      isolatedEnv({
+        NODE_ENV: "production",
+        PORT: "0",
+        DATABASE_PATH: path.join(dir, "prod.db"),
+        UPLOADS_DIR: path.join(dir, "uploads"),
+        JWT_SECRET: "t".repeat(20) + "0a1b2c3d4e5f6a7b8c9d",
+        BREVO_API_KEY: "xkeysib-test-value-not-a-real-key",
+        BREVO_SENDER_EMAIL: "no-reply@example.com",
+      })
+    );
+    const exitCode: number | null = await new Promise((resolve) => {
+      const timer = setTimeout(() => { child.kill(); resolve(null); }, 60_000);
+      child.once("exit", (code) => { clearTimeout(timer); resolve(code); });
+    });
+    assert.equal(exitCode, 1);
+    assert.match(output(), /database at .* is empty/i);
+    assert.match(output(), /SEED_DEMO_DATA/);
   });
 
   test("production with an example JWT secret is refused", async () => {

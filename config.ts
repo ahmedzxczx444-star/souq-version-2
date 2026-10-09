@@ -28,6 +28,8 @@ export interface AppConfig {
   trustProxy: number | boolean;
   authRateLimitMax: number;
   seedDemoData: boolean;
+  /** Whether SEED_DEMO_DATA was given a value at all (true or false). */
+  seedDemoDataConfigured: boolean;
   /** Optional first-admin bootstrap. */
   adminEmail?: string;
   adminPassword?: string;
@@ -126,8 +128,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd: string = p
   }
 
   // --- Demo data ------------------------------------------------------------
+  // Opt-in everywhere. The seed only ever runs against a completely empty
+  // database and never deletes anything, so it is safe to leave on; demo
+  // dealer accounts are created with passwords nobody knows.
   const seedDemoData = isTrue(env.SEED_DEMO_DATA);
-  if (seedDemoData && isProduction) problems.push("SEED_DEMO_DATA must not be enabled in production.");
 
   // --- First admin ----------------------------------------------------------
   const adminEmail = (env.ADMIN_EMAIL || "").trim().toLowerCase() || undefined;
@@ -156,6 +160,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd: string = p
     trustProxy,
     authRateLimitMax,
     seedDemoData,
+    seedDemoDataConfigured: (env.SEED_DEMO_DATA || "").trim() !== "",
     adminEmail,
     adminPassword,
     adminPasswordForceReset: isTrue(env.ADMIN_PASSWORD_FORCE_RESET),
