@@ -24,15 +24,15 @@ mixin _$Dealer {
   int get id => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
   String get logo => throw _privateConstructorUsedError;
-  String get description => throw _privateConstructorUsedError;
-  String get location => throw _privateConstructorUsedError;
+  String? get description => throw _privateConstructorUsedError;
+  String? get location => throw _privateConstructorUsedError;
   String get phone => throw _privateConstructorUsedError;
   num get rating => throw _privateConstructorUsedError;
   @JsonKey(name: 'branches_count')
   int get branchesCount => throw _privateConstructorUsedError;
   @JsonKey(name: 'reviews_count')
   int get reviewsCount => throw _privateConstructorUsedError;
-  @JsonKey(name: 'is_luxury')
+  @JsonKey(name: 'is_luxury', fromJson: flexibleBool)
   bool get isLuxury => throw _privateConstructorUsedError;
   @JsonKey(name: 'car_count')
   int? get carCount => throw _privateConstructorUsedError;
@@ -53,7 +53,7 @@ mixin _$Dealer {
   String? get businessType => throw _privateConstructorUsedError;
   @JsonKey(name: 'dealer_category')
   String? get dealerCategory => throw _privateConstructorUsedError;
-  @JsonKey(name: 'delivery_supported')
+  @JsonKey(name: 'delivery_supported', fromJson: flexibleBoolOrNull)
   bool? get deliverySupported => throw _privateConstructorUsedError;
 
   /// Serializes this Dealer to a JSON map.
@@ -74,13 +74,13 @@ abstract class $DealerCopyWith<$Res> {
     int id,
     String name,
     String logo,
-    String description,
-    String location,
+    String? description,
+    String? location,
     String phone,
     num rating,
     @JsonKey(name: 'branches_count') int branchesCount,
     @JsonKey(name: 'reviews_count') int reviewsCount,
-    @JsonKey(name: 'is_luxury') bool isLuxury,
+    @JsonKey(name: 'is_luxury', fromJson: flexibleBool) bool isLuxury,
     @JsonKey(name: 'car_count') int? carCount,
     @JsonKey(name: 'whatsapp_number') String? whatsappNumber,
     String? address,
@@ -93,7 +93,8 @@ abstract class $DealerCopyWith<$Res> {
     String? email,
     @JsonKey(name: 'business_type') String? businessType,
     @JsonKey(name: 'dealer_category') String? dealerCategory,
-    @JsonKey(name: 'delivery_supported') bool? deliverySupported,
+    @JsonKey(name: 'delivery_supported', fromJson: flexibleBoolOrNull)
+    bool? deliverySupported,
   });
 }
 
@@ -115,8 +116,8 @@ class _$DealerCopyWithImpl<$Res, $Val extends Dealer>
     Object? id = null,
     Object? name = null,
     Object? logo = null,
-    Object? description = null,
-    Object? location = null,
+    Object? description = freezed,
+    Object? location = freezed,
     Object? phone = null,
     Object? rating = null,
     Object? branchesCount = null,
@@ -150,14 +151,14 @@ class _$DealerCopyWithImpl<$Res, $Val extends Dealer>
                 ? _value.logo
                 : logo // ignore: cast_nullable_to_non_nullable
                       as String,
-            description: null == description
+            description: freezed == description
                 ? _value.description
                 : description // ignore: cast_nullable_to_non_nullable
-                      as String,
-            location: null == location
+                      as String?,
+            location: freezed == location
                 ? _value.location
                 : location // ignore: cast_nullable_to_non_nullable
-                      as String,
+                      as String?,
             phone: null == phone
                 ? _value.phone
                 : phone // ignore: cast_nullable_to_non_nullable
@@ -248,13 +249,13 @@ abstract class _$$DealerImplCopyWith<$Res> implements $DealerCopyWith<$Res> {
     int id,
     String name,
     String logo,
-    String description,
-    String location,
+    String? description,
+    String? location,
     String phone,
     num rating,
     @JsonKey(name: 'branches_count') int branchesCount,
     @JsonKey(name: 'reviews_count') int reviewsCount,
-    @JsonKey(name: 'is_luxury') bool isLuxury,
+    @JsonKey(name: 'is_luxury', fromJson: flexibleBool) bool isLuxury,
     @JsonKey(name: 'car_count') int? carCount,
     @JsonKey(name: 'whatsapp_number') String? whatsappNumber,
     String? address,
@@ -267,7 +268,8 @@ abstract class _$$DealerImplCopyWith<$Res> implements $DealerCopyWith<$Res> {
     String? email,
     @JsonKey(name: 'business_type') String? businessType,
     @JsonKey(name: 'dealer_category') String? dealerCategory,
-    @JsonKey(name: 'delivery_supported') bool? deliverySupported,
+    @JsonKey(name: 'delivery_supported', fromJson: flexibleBoolOrNull)
+    bool? deliverySupported,
   });
 }
 
@@ -288,8 +290,8 @@ class __$$DealerImplCopyWithImpl<$Res>
     Object? id = null,
     Object? name = null,
     Object? logo = null,
-    Object? description = null,
-    Object? location = null,
+    Object? description = freezed,
+    Object? location = freezed,
     Object? phone = null,
     Object? rating = null,
     Object? branchesCount = null,
@@ -323,14 +325,14 @@ class __$$DealerImplCopyWithImpl<$Res>
             ? _value.logo
             : logo // ignore: cast_nullable_to_non_nullable
                   as String,
-        description: null == description
+        description: freezed == description
             ? _value.description
             : description // ignore: cast_nullable_to_non_nullable
-                  as String,
-        location: null == location
+                  as String?,
+        location: freezed == location
             ? _value.location
             : location // ignore: cast_nullable_to_non_nullable
-                  as String,
+                  as String?,
         phone: null == phone
             ? _value.phone
             : phone // ignore: cast_nullable_to_non_nullable
@@ -415,13 +417,13 @@ class _$DealerImpl implements _Dealer {
     required this.id,
     required this.name,
     required this.logo,
-    required this.description,
-    required this.location,
+    this.description,
+    this.location,
     required this.phone,
     required this.rating,
     @JsonKey(name: 'branches_count') required this.branchesCount,
     @JsonKey(name: 'reviews_count') required this.reviewsCount,
-    @JsonKey(name: 'is_luxury') required this.isLuxury,
+    @JsonKey(name: 'is_luxury', fromJson: flexibleBool) required this.isLuxury,
     @JsonKey(name: 'car_count') this.carCount,
     @JsonKey(name: 'whatsapp_number') this.whatsappNumber,
     this.address,
@@ -434,7 +436,8 @@ class _$DealerImpl implements _Dealer {
     this.email,
     @JsonKey(name: 'business_type') this.businessType,
     @JsonKey(name: 'dealer_category') this.dealerCategory,
-    @JsonKey(name: 'delivery_supported') this.deliverySupported,
+    @JsonKey(name: 'delivery_supported', fromJson: flexibleBoolOrNull)
+    this.deliverySupported,
   });
 
   factory _$DealerImpl.fromJson(Map<String, dynamic> json) =>
@@ -447,9 +450,9 @@ class _$DealerImpl implements _Dealer {
   @override
   final String logo;
   @override
-  final String description;
+  final String? description;
   @override
-  final String location;
+  final String? location;
   @override
   final String phone;
   @override
@@ -461,7 +464,7 @@ class _$DealerImpl implements _Dealer {
   @JsonKey(name: 'reviews_count')
   final int reviewsCount;
   @override
-  @JsonKey(name: 'is_luxury')
+  @JsonKey(name: 'is_luxury', fromJson: flexibleBool)
   final bool isLuxury;
   @override
   @JsonKey(name: 'car_count')
@@ -495,7 +498,7 @@ class _$DealerImpl implements _Dealer {
   @JsonKey(name: 'dealer_category')
   final String? dealerCategory;
   @override
-  @JsonKey(name: 'delivery_supported')
+  @JsonKey(name: 'delivery_supported', fromJson: flexibleBoolOrNull)
   final bool? deliverySupported;
 
   @override
@@ -596,13 +599,14 @@ abstract class _Dealer implements Dealer {
     required final int id,
     required final String name,
     required final String logo,
-    required final String description,
-    required final String location,
+    final String? description,
+    final String? location,
     required final String phone,
     required final num rating,
     @JsonKey(name: 'branches_count') required final int branchesCount,
     @JsonKey(name: 'reviews_count') required final int reviewsCount,
-    @JsonKey(name: 'is_luxury') required final bool isLuxury,
+    @JsonKey(name: 'is_luxury', fromJson: flexibleBool)
+    required final bool isLuxury,
     @JsonKey(name: 'car_count') final int? carCount,
     @JsonKey(name: 'whatsapp_number') final String? whatsappNumber,
     final String? address,
@@ -615,7 +619,8 @@ abstract class _Dealer implements Dealer {
     final String? email,
     @JsonKey(name: 'business_type') final String? businessType,
     @JsonKey(name: 'dealer_category') final String? dealerCategory,
-    @JsonKey(name: 'delivery_supported') final bool? deliverySupported,
+    @JsonKey(name: 'delivery_supported', fromJson: flexibleBoolOrNull)
+    final bool? deliverySupported,
   }) = _$DealerImpl;
 
   factory _Dealer.fromJson(Map<String, dynamic> json) = _$DealerImpl.fromJson;
@@ -627,9 +632,9 @@ abstract class _Dealer implements Dealer {
   @override
   String get logo;
   @override
-  String get description;
+  String? get description;
   @override
-  String get location;
+  String? get location;
   @override
   String get phone;
   @override
@@ -641,7 +646,7 @@ abstract class _Dealer implements Dealer {
   @JsonKey(name: 'reviews_count')
   int get reviewsCount;
   @override
-  @JsonKey(name: 'is_luxury')
+  @JsonKey(name: 'is_luxury', fromJson: flexibleBool)
   bool get isLuxury;
   @override
   @JsonKey(name: 'car_count')
@@ -675,7 +680,7 @@ abstract class _Dealer implements Dealer {
   @JsonKey(name: 'dealer_category')
   String? get dealerCategory;
   @override
-  @JsonKey(name: 'delivery_supported')
+  @JsonKey(name: 'delivery_supported', fromJson: flexibleBoolOrNull)
   bool? get deliverySupported;
 
   /// Create a copy of Dealer

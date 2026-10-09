@@ -22,8 +22,10 @@ _$CarImpl _$$CarImplFromJson(Map<String, dynamic> json) => _$CarImpl(
   status: json['status'] as String,
   views: json['views'] as num? ?? 0,
   favoritesCount: (json['favorites_count'] as num?)?.toInt(),
-  featured: json['featured'] as bool? ?? false,
-  isPromoted: json['isPromoted'] as bool? ?? false,
+  featured: json['featured'] == null ? false : flexibleBool(json['featured']),
+  isPromoted: json['isPromoted'] == null
+      ? false
+      : flexibleBool(json['isPromoted']),
   promotionExpires: json['promotion_expires'] as String?,
   dealerPlanType: json['dealer_plan_type'] as String?,
   createdAt: json['createdAt'] as String?,

@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'json_converters.dart';
+
 part 'dealer.freezed.dart';
 part 'dealer.g.dart';
 
@@ -13,13 +15,15 @@ class Dealer with _$Dealer {
     required int id,
     required String name,
     required String logo,
-    required String description,
-    required String location,
+    // Nullable: dealers created through registration have no description or
+    // location until they edit their profile (PUT /api/dealer/profile).
+    String? description,
+    String? location,
     required String phone,
     required num rating,
     @JsonKey(name: 'branches_count') required int branchesCount,
     @JsonKey(name: 'reviews_count') required int reviewsCount,
-    @JsonKey(name: 'is_luxury') required bool isLuxury,
+    @JsonKey(name: 'is_luxury', fromJson: flexibleBool) required bool isLuxury,
     @JsonKey(name: 'car_count') int? carCount,
     @JsonKey(name: 'whatsapp_number') String? whatsappNumber,
     String? address,
@@ -32,7 +36,7 @@ class Dealer with _$Dealer {
     String? email,
     @JsonKey(name: 'business_type') String? businessType,
     @JsonKey(name: 'dealer_category') String? dealerCategory,
-    @JsonKey(name: 'delivery_supported') bool? deliverySupported,
+    @JsonKey(name: 'delivery_supported', fromJson: flexibleBoolOrNull) bool? deliverySupported,
   }) = _Dealer;
 
   factory Dealer.fromJson(Map<String, dynamic> json) => _$DealerFromJson(json);

@@ -20,6 +20,16 @@ class ApiConfig {
     'API_BASE_URL',
     defaultValue: 'http://127.0.0.1:3000',
   );
+
+  /// Makes a server-relative path (`/uploads/cars/x.jpg`) absolute against
+  /// [baseUrl]. Anything else — an absolute http(s) URL, a `//host/...`
+  /// protocol-relative URL, a data: URI, or an empty string — is returned
+  /// untouched, so an already absolute URL never changes host.
+  static String resolveUrl(String url, {String base = baseUrl}) {
+    if (!url.startsWith('/') || url.startsWith('//')) return url;
+    final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    return '$root$url';
+  }
 }
 
 /// Mirrors src/services/api.ts's `API_BASE` + path construction 1:1 so the

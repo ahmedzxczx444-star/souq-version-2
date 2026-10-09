@@ -40,7 +40,7 @@ mixin _$Car {
   @JsonKey(name: 'favorites_count')
   int? get favoritesCount => throw _privateConstructorUsedError;
   bool get featured => throw _privateConstructorUsedError;
-  @JsonKey(name: 'isPromoted')
+  @JsonKey(name: 'isPromoted', fromJson: flexibleBool)
   bool get isPromoted => throw _privateConstructorUsedError;
   @JsonKey(name: 'promotion_expires')
   String? get promotionExpires => throw _privateConstructorUsedError;
@@ -94,7 +94,7 @@ abstract class $CarCopyWith<$Res> {
     num views,
     @JsonKey(name: 'favorites_count') int? favoritesCount,
     bool featured,
-    @JsonKey(name: 'isPromoted') bool isPromoted,
+    @JsonKey(name: 'isPromoted', fromJson: flexibleBool) bool isPromoted,
     @JsonKey(name: 'promotion_expires') String? promotionExpires,
     @JsonKey(name: 'dealer_plan_type') String? dealerPlanType,
     @JsonKey(name: 'createdAt') String? createdAt,
@@ -289,7 +289,7 @@ abstract class _$$CarImplCopyWith<$Res> implements $CarCopyWith<$Res> {
     num views,
     @JsonKey(name: 'favorites_count') int? favoritesCount,
     bool featured,
-    @JsonKey(name: 'isPromoted') bool isPromoted,
+    @JsonKey(name: 'isPromoted', fromJson: flexibleBool) bool isPromoted,
     @JsonKey(name: 'promotion_expires') String? promotionExpires,
     @JsonKey(name: 'dealer_plan_type') String? dealerPlanType,
     @JsonKey(name: 'createdAt') String? createdAt,
@@ -477,7 +477,8 @@ class _$CarImpl implements _Car {
     this.views = 0,
     @JsonKey(name: 'favorites_count') this.favoritesCount,
     this.featured = false,
-    @JsonKey(name: 'isPromoted') this.isPromoted = false,
+    @JsonKey(name: 'isPromoted', fromJson: flexibleBool)
+    this.isPromoted = false,
     @JsonKey(name: 'promotion_expires') this.promotionExpires,
     @JsonKey(name: 'dealer_plan_type') this.dealerPlanType,
     @JsonKey(name: 'createdAt') this.createdAt,
@@ -537,7 +538,7 @@ class _$CarImpl implements _Car {
   @JsonKey()
   final bool featured;
   @override
-  @JsonKey(name: 'isPromoted')
+  @JsonKey(name: 'isPromoted', fromJson: flexibleBool)
   final bool isPromoted;
   @override
   @JsonKey(name: 'promotion_expires')
@@ -692,7 +693,7 @@ abstract class _Car implements Car {
     final num views,
     @JsonKey(name: 'favorites_count') final int? favoritesCount,
     final bool featured,
-    @JsonKey(name: 'isPromoted') final bool isPromoted,
+    @JsonKey(name: 'isPromoted', fromJson: flexibleBool) final bool isPromoted,
     @JsonKey(name: 'promotion_expires') final String? promotionExpires,
     @JsonKey(name: 'dealer_plan_type') final String? dealerPlanType,
     @JsonKey(name: 'createdAt') final String? createdAt,
@@ -743,7 +744,7 @@ abstract class _Car implements Car {
   @override
   bool get featured;
   @override
-  @JsonKey(name: 'isPromoted')
+  @JsonKey(name: 'isPromoted', fromJson: flexibleBool)
   bool get isPromoted;
   @override
   @JsonKey(name: 'promotion_expires')

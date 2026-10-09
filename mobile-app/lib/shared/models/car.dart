@@ -1,5 +1,8 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../../core/network/api_endpoints.dart';
+import 'json_converters.dart';
+
 part 'car.freezed.dart';
 part 'car.g.dart';
 
@@ -26,8 +29,8 @@ class Car with _$Car {
     required String status,
     @Default(0) num views,
     @JsonKey(name: 'favorites_count') int? favoritesCount,
-    @Default(false) bool featured,
-    @JsonKey(name: 'isPromoted') @Default(false) bool isPromoted,
+    @JsonKey(fromJson: flexibleBool) @Default(false) bool featured,
+    @JsonKey(name: 'isPromoted', fromJson: flexibleBool) @Default(false) bool isPromoted,
     @JsonKey(name: 'promotion_expires') String? promotionExpires,
     @JsonKey(name: 'dealer_plan_type') String? dealerPlanType,
     @JsonKey(name: 'createdAt') String? createdAt,
@@ -45,7 +48,10 @@ class Car with _$Car {
 
 extension CarDisplayX on Car {
   String get title => '$make $model';
-  String get coverImage => images.isNotEmpty ? images.first : '';
+  /// [images] with server-relative paths (car photos uploaded through
+  /// POST /api/cars/upload are stored as `/uploads/cars/...`) made absolute.
+  List<String> get imageUrls => images.map(ApiConfig.resolveUrl).toList();
+  String get coverImage => images.isNotEmpty ? ApiConfig.resolveUrl(images.first) : '';
   String get effectiveLocation => location.isNotEmpty ? location : (dealerLocation ?? '');
 
   /// [dealerLogo] in a format Flutter's image codecs can decode. The backend's
@@ -59,7 +65,7 @@ extension CarDisplayX on Car {
     if (uri != null && uri.host == 'api.dicebear.com' && uri.path.endsWith('/svg')) {
       return uri.replace(path: '${uri.path.substring(0, uri.path.length - 3)}png').toString();
     }
-    return logo;
+    return ApiConfig.resolveUrl(logo);
   }
 }
 

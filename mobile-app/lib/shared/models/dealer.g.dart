@@ -10,13 +10,13 @@ _$DealerImpl _$$DealerImplFromJson(Map<String, dynamic> json) => _$DealerImpl(
   id: (json['id'] as num).toInt(),
   name: json['name'] as String,
   logo: json['logo'] as String,
-  description: json['description'] as String,
-  location: json['location'] as String,
+  description: json['description'] as String?,
+  location: json['location'] as String?,
   phone: json['phone'] as String,
   rating: json['rating'] as num,
   branchesCount: (json['branches_count'] as num).toInt(),
   reviewsCount: (json['reviews_count'] as num).toInt(),
-  isLuxury: json['is_luxury'] as bool,
+  isLuxury: flexibleBool(json['is_luxury']),
   carCount: (json['car_count'] as num?)?.toInt(),
   whatsappNumber: json['whatsapp_number'] as String?,
   address: json['address'] as String?,
@@ -29,7 +29,7 @@ _$DealerImpl _$$DealerImplFromJson(Map<String, dynamic> json) => _$DealerImpl(
   email: json['email'] as String?,
   businessType: json['business_type'] as String?,
   dealerCategory: json['dealer_category'] as String?,
-  deliverySupported: json['delivery_supported'] as bool?,
+  deliverySupported: flexibleBoolOrNull(json['delivery_supported']),
 );
 
 Map<String, dynamic> _$$DealerImplToJson(_$DealerImpl instance) =>
