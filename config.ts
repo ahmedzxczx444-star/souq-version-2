@@ -100,6 +100,30 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd: string = p
   const databasePath = path.resolve(cwd, (env.DATABASE_PATH || "automarket.db").trim());
   const uploadsDir = path.resolve(cwd, (env.UPLOADS_DIR || "uploads").trim());
 
+  // --- Hosting platform (Railway) -------------------------------------------
+  // Railway tells the process where it runs. Two mistakes there lose data or
+  // switch the protections above off without any error, so both stop the start:
+  //  * not running in production mode (wrong builder / start command), and
+  //  * no volume, or the database / uploads outside it: the container disk is
+  //    replaced on every deploy, taking every account and upload with it.
+  const onRailway = Boolean((env.RAILWAY_PROJECT_ID || env.RAILWAY_ENVIRONMENT_NAME || "").trim());
+  if (onRailway && !isProduction) {
+    problems.push("This service runs on Railway but NODE_ENV is not \"production\"; deploy it with the repository Dockerfile.");
+  }
+  if (onRailway && isProduction && !isTrue(env.ALLOW_EPHEMERAL_STORAGE)) {
+    const mount = (env.RAILWAY_VOLUME_MOUNT_PATH || "").trim();
+    const inside = (target: string) => {
+      const rel = path.relative(path.resolve(cwd, mount), target);
+      return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+    };
+    if (!mount) {
+      problems.push("No Railway volume is attached. Add a Volume mounted at /data (the database and uploads would be lost on every deploy).");
+    } else {
+      if (!inside(databasePath)) problems.push(`DATABASE_PATH (${databasePath}) is not on the Railway volume mounted at ${mount}.`);
+      if (!inside(uploadsDir)) problems.push(`UPLOADS_DIR (${uploadsDir}) is not on the Railway volume mounted at ${mount}.`);
+    }
+  }
+
   // --- Network --------------------------------------------------------------
   const corsOrigins = (env.CORS_ORIGINS || "")
     .split(",")

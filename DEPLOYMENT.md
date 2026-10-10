@@ -32,6 +32,7 @@ Set these in the platform, never in the repository.
 | `ADMIN_PASSWORD_FORCE_RESET` | no | `true` once, to replace an existing admin's password |
 | `CORS_ORIGINS` | no | only if another website must call the API from the browser |
 | `SEED_DEMO_DATA` | first deploy | `true` loads the demo dealers and cars into an empty database, `false` starts empty. With an empty database and no value the server refuses to start (protection against a missing volume) |
+| `ALLOW_EPHEMERAL_STORAGE` | no | on Railway the server refuses to start unless a Volume is attached and holds `DATABASE_PATH` and `UPLOADS_DIR`. `true` skips that check — only for a throwaway service whose data may be lost on every deploy |
 | `GEMINI_API_KEY` | no | enables AI search |
 | `RECAPTCHA_SECRET` | no | leave unset — the mobile apps do not send captcha tokens |
 | `PORT` | no | set by the platform; defaults to 3000 |

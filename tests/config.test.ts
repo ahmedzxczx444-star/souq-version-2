@@ -89,3 +89,38 @@ test("development never signs with a guessable secret", () => {
   assert.equal(a.isProduction, false);
   assert.equal(a.trustProxy, false);
 });
+
+test("on Railway the database and uploads must live on an attached volume", () => {
+  const railway = { RAILWAY_PROJECT_ID: "p", RAILWAY_ENVIRONMENT_NAME: "production", DATABASE_PATH: "/data/automarket.db", UPLOADS_DIR: "/data/uploads" };
+
+  // No volume attached: every deploy would start from an empty disk.
+  assert.match(problemsOf(prodEnv(railway)).join("\n"), /No Railway volume is attached/);
+
+  // Volume attached where the Dockerfile expects it.
+  const ok = loadConfig(prodEnv({ ...railway, RAILWAY_VOLUME_MOUNT_PATH: "/data" }), "/app");
+  assert.equal(ok.isProduction, true);
+
+  // Volume mounted somewhere else, or only one of the two paths on it.
+  const elsewhere = problemsOf(prodEnv({ ...railway, RAILWAY_VOLUME_MOUNT_PATH: "/mnt/storage" })).join("\n");
+  assert.match(elsewhere, /DATABASE_PATH .* is not on the Railway volume/);
+  assert.match(elsewhere, /UPLOADS_DIR .* is not on the Railway volume/);
+  const half = problemsOf(prodEnv({ ...railway, RAILWAY_VOLUME_MOUNT_PATH: "/data", UPLOADS_DIR: "/app/uploads" })).join("\n");
+  assert.doesNotMatch(half, /DATABASE_PATH/);
+  assert.match(half, /UPLOADS_DIR/);
+  // A sibling folder that only shares the prefix is not on the volume.
+  assert.match(problemsOf(prodEnv({ ...railway, RAILWAY_VOLUME_MOUNT_PATH: "/data", DATABASE_PATH: "/database/a.db" })).join("\n"), /DATABASE_PATH/);
+
+  // Explicit opt-out for a throwaway service.
+  assert.deepEqual(problemsOf(prodEnv({ ...railway, ALLOW_EPHEMERAL_STORAGE: "true" })), []);
+});
+
+test("on Railway the service must run in production mode; elsewhere nothing changes", () => {
+  assert.match(
+    problemsOf({ NODE_ENV: "development", RAILWAY_PROJECT_ID: "p" } as NodeJS.ProcessEnv).join("\n"),
+    /NODE_ENV is not "production"/
+  );
+  assert.match(problemsOf({ RAILWAY_ENVIRONMENT_NAME: "production" } as NodeJS.ProcessEnv).join("\n"), /NODE_ENV is not "production"/);
+  // Not on Railway: no volume rules, development still starts.
+  assert.deepEqual(problemsOf(prodEnv()), []);
+  assert.deepEqual(problemsOf({ NODE_ENV: "development" } as NodeJS.ProcessEnv), []);
+});
