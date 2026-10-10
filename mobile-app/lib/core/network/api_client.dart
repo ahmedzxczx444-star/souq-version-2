@@ -44,7 +44,8 @@ class ApiClient {
     );
 
     if (kDebugMode) {
-      _dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
+      // Bodies stay out of the log: they carry passwords, OTP codes and tokens.
+      _dio.interceptors.add(LogInterceptor(requestHeader: false, responseHeader: false));
     }
   }
 
@@ -61,6 +62,32 @@ class ApiClient {
       _run(() => _dio.put(path, data: data));
 
   Future<Response<dynamic>> delete(String path) => _run(() => _dio.delete(path));
+
+  /// multipart/form-data upload of local files under one form [field]
+  /// (POST /api/cars/upload "images", POST /api/reels/upload "video").
+  /// The server filters on the declared MIME type, so each file carries one.
+  Future<Response<dynamic>> upload(
+    String path, {
+    required String field,
+    required List<({String path, String name, String mimeType})> files,
+    void Function(int sent, int total)? onProgress,
+  }) =>
+      _run(() async {
+        final form = FormData();
+        for (final file in files) {
+          form.files.add(MapEntry(
+            field,
+            await MultipartFile.fromFile(file.path, filename: file.name, contentType: DioMediaType.parse(file.mimeType)),
+          ));
+        }
+        return _dio.post(
+          path,
+          data: form,
+          onSendProgress: onProgress,
+          // A 100 MB reel on a phone connection takes far longer than a JSON call.
+          options: Options(sendTimeout: const Duration(minutes: 10), receiveTimeout: const Duration(minutes: 10)),
+        );
+      });
 
   Future<Response<dynamic>> _run(Future<Response<dynamic>> Function() request) async {
     try {

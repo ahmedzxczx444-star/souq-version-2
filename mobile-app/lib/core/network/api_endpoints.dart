@@ -67,6 +67,7 @@ class ApiEndpoints {
   static const resetPassword = '/api/auth/reset-password';
   static const changePassword = '/api/auth/change-password';
   static const logoutAll = '/api/auth/logout-all';
+  static const deleteAccount = '/api/auth/delete-account';
   static const me = '/api/auth/me';
 
   // Cars
@@ -85,6 +86,32 @@ class ApiEndpoints {
   static const reels = '/api/reels';
   static String reelLike(int id) => '/api/reels/$id/like';
   static String reelView(int id) => '/api/reels/$id/view';
+
+  // Dealer management (the signed-in dealer's own data)
+  static const dealerProfile = '/api/dealer/profile';
+  static const dealerCars = '/api/dealer/cars';
+  static const dealerStats = '/api/dealer/stats';
+  static const dealerReels = '/api/dealer/reels';
+  static const carImagesUpload = '/api/cars/upload';
+  static const reelUpload = '/api/reels/upload';
+  static String reelById(int id) => '/api/reels/$id';
+  static const chainOverview = '/api/dealer/chain/overview';
+  static const dealerBranches = '/api/dealer/branches';
+  static const dealerEmployees = '/api/dealer/employees';
+  static const importerWarehouses = '/api/importer/warehouses';
+  static const importerShipments = '/api/importer/shipments';
+  static const importerPreorders = '/api/importer/preorders';
+  static const officialServiceCenters = '/api/official/service-centers';
+  static const officialOffers = '/api/official/offers';
+  static const officialWarranties = '/api/official/warranties';
+
+  // Parts (parts dealers)
+  static const parts = '/api/parts';
+  static String partById(int id) => '/api/parts/$id';
+  static String partStatus(int id) => '/api/parts/$id/status';
+  static const partsStats = '/api/parts/dealer/stats';
+  static const partOrders = '/api/parts/orders';
+  static String partOrderStatus(int id) => '/api/parts/orders/$id/status';
 
   // Favorites
   static const favorites = '/api/favorites';

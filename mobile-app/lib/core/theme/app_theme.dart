@@ -33,6 +33,11 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
       ),
+      // Dialogs and menus are plain white like the site's sheets (no Material 3 tint).
+      dialogTheme: const DialogThemeData(backgroundColor: AppColors.white, surfaceTintColor: Colors.transparent),
+      popupMenuTheme: const PopupMenuThemeData(color: AppColors.white, surfaceTintColor: Colors.transparent),
+      datePickerTheme: const DatePickerThemeData(backgroundColor: AppColors.white, surfaceTintColor: Colors.transparent),
+      canvasColor: AppColors.white,
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.black,

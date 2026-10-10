@@ -52,6 +52,12 @@ try {
   throw e;
 }
 
+// Non-secret summary, so a deploy log shows at a glance what the process is using.
+console.log(
+  `[config] mode=${config.nodeEnv} port=${config.port} database=${config.databasePath} uploads=${config.uploadsDir} ` +
+  `seedDemoData=${config.seedDemoDataConfigured ? config.seedDemoData : "unset"} corsOrigins=${config.corsOrigins.length}`
+);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -1894,6 +1900,58 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // Self-service account deletion (required by the app stores and promised in
+  // the privacy policy). Personal data is erased and the account is closed for
+  // good; rows other records point at are anonymised rather than removed so
+  // nothing else breaks. A dealer's showroom and listings leave the public site.
+  app.post("/api/auth/delete-account", authenticate, async (req: any, res) => {
+    const { password } = req.body || {};
+    if (typeof password !== "string" || !password) {
+      return res.status(400).json({ error: "Password is required to delete the account" });
+    }
+    const user = db.prepare("SELECT id, role, password FROM users WHERE id = ?").get(req.user.id) as any;
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(400).json({ error: "كلمة المرور غير صحيحة" });
+    }
+    if (user.role === 'super_admin') {
+      return res.status(400).json({ error: "Administrator accounts cannot be deleted here" });
+    }
+
+    const erase = db.transaction(() => {
+      const emailRow = db.prepare("SELECT email FROM users WHERE id = ?").get(user.id) as any;
+      db.prepare("DELETE FROM favorites WHERE user_id = ?").run(user.id);
+      db.prepare("DELETE FROM dealer_follows WHERE user_id = ?").run(user.id);
+      db.prepare("DELETE FROM dealer_ratings WHERE user_id = ?").run(user.id);
+      db.prepare("DELETE FROM reel_likes WHERE user_id = ?").run(user.id);
+      db.prepare("DELETE FROM notifications WHERE user_id = ?").run(user.id);
+      if (emailRow?.email) {
+        db.prepare("DELETE FROM otp_codes WHERE email = ?").run(emailRow.email);
+        db.prepare("DELETE FROM otp_send_log WHERE email = ?").run(emailRow.email);
+      }
+      db.prepare("UPDATE activity_log SET details = '' WHERE user_id = ?").run(user.id);
+
+      const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(user.id) as any;
+      if (dealer) {
+        db.prepare(`
+          UPDATE dealers
+          SET status = 'deleted', name = 'Deleted dealer', logo = '', description = NULL, location = NULL,
+              phone = '', whatsapp_number = '', address = NULL, map_location_link = NULL, latitude = NULL, longitude = NULL
+          WHERE id = ?
+        `).run(dealer.id);
+        db.prepare("UPDATE cars SET status = 'hidden' WHERE dealer_id = ?").run(dealer.id);
+        db.prepare("DELETE FROM dealer_branches WHERE dealer_id = ?").run(dealer.id);
+        db.prepare("DELETE FROM dealer_follows WHERE dealer_id = ?").run(dealer.id);
+      }
+
+      db.prepare("UPDATE users SET email = ?, name = 'Deleted user', password = ?, is_verified = -1 WHERE id = ?")
+        .run(`deleted-${user.id}-${Date.now()}@deleted.invalid`, unusablePasswordHash(), user.id);
+      bumpTokenVersion(db, user.id);
+    });
+    erase();
+
+    res.json({ success: true });
+  });
+
   app.get("/api/auth/me", authenticate, (req: any, res) => {
     const user = db.prepare("SELECT id, email, name, role FROM users WHERE id = ?").get(req.user.id) as any;
     const dealer = db.prepare("SELECT phone FROM dealers WHERE user_id = ?").get(req.user.id) as any;
@@ -1931,11 +1989,17 @@ async function startServer() {
       return res.status(403).json({ error: "Monthly car posting limit reached for your plan" });
     }
 
-    const dealer = db.prepare("SELECT id, status FROM dealers WHERE user_id = ?").get(req.user.id) as any;
+    const dealer = db.prepare("SELECT id, status, business_type FROM dealers WHERE user_id = ?").get(req.user.id) as any;
     if (!dealer) return res.status(404).json({ error: "Dealer profile not found" });
     if (dealer.status !== 'active') return res.status(403).json({ error: "Your account is pending approval" });
+    if ((dealer.business_type || 'car_dealer') !== 'car_dealer') {
+      return res.status(403).json({ error: "This feature is not available for your dealer type" });
+    }
 
     const { make, model, year, price, mileage, location, fuel_type, transmission, description, images, video_url } = req.body;
+    if (video_url && !isUploadedReelUrl(video_url)) {
+      return res.status(400).json({ error: "Invalid video" });
+    }
     // Dealers choose between the public states; 'hidden' is an admin moderation state.
     const status = ["available", "reserved", "sold"].includes(req.body.status) ? req.body.status : "available";
     
@@ -1964,7 +2028,7 @@ async function startServer() {
     logActivity("Dealer added car", req.user.id, `Dealer ${dealer.id} added ${make} ${model}`);
 
     if (video_url) {
-      db.prepare("INSERT INTO reels (car_id, video_url, caption) VALUES (?, ?, ?)").run(result.lastInsertRowid, video_url, `${make} ${model}`);
+      db.prepare("INSERT INTO reels (dealer_id, car_id, video_url, caption) VALUES (?, ?, ?, ?)").run(dealer.id, result.lastInsertRowid, video_url, `${make} ${model}`);
     }
 
     if (SUBSCRIPTION_SYSTEM_ENABLED) {
@@ -2319,6 +2383,8 @@ async function startServer() {
 
     try {
       db.prepare("DELETE FROM favorites WHERE car_id = ?").run(req.params.id);
+      db.prepare("DELETE FROM reel_likes WHERE reel_id IN (SELECT id FROM reels WHERE car_id = ?)").run(req.params.id);
+      db.prepare("DELETE FROM car_warranties WHERE car_id = ?").run(req.params.id);
       db.prepare("DELETE FROM reels WHERE car_id = ?").run(req.params.id);
       db.prepare("DELETE FROM cars WHERE id = ?").run(req.params.id);
       console.log(`[DELETE] Successfully deleted car: ${req.params.id}`);
@@ -2363,6 +2429,8 @@ async function startServer() {
     const car = db.prepare("SELECT make, model FROM cars WHERE id = ?").get(req.params.id) as any;
     if (car) {
       db.prepare("DELETE FROM favorites WHERE car_id = ?").run(req.params.id);
+      db.prepare("DELETE FROM reel_likes WHERE reel_id IN (SELECT id FROM reels WHERE car_id = ?)").run(req.params.id);
+      db.prepare("DELETE FROM car_warranties WHERE car_id = ?").run(req.params.id);
       db.prepare("DELETE FROM reels WHERE car_id = ?").run(req.params.id);
       db.prepare("DELETE FROM cars WHERE id = ?").run(req.params.id);
       logActivity("Admin deleted car", req.user.id, `Admin deleted car: ${car.make} ${car.model} (ID: ${req.params.id})`);
@@ -2497,6 +2565,11 @@ async function startServer() {
   });
 
   // Reels API
+  // A reel's video must be a file this server stored through /api/reels/upload.
+  function isUploadedReelUrl(value: unknown): value is string {
+    return typeof value === "string" && /^\/uploads\/reels\/[A-Za-z0-9._-]+$/.test(value);
+  }
+
   app.post("/api/reels/upload", authenticate, (req: any, res) => {
     upload.single("video")(req, res, (err) => {
       if (err instanceof multer.MulterError) {
@@ -2543,14 +2616,49 @@ async function startServer() {
     if (!dealer) return res.status(404).json({ error: "Dealer profile not found" });
     if (dealer.status !== 'active') return res.status(403).json({ error: "Your account is pending approval" });
 
-    const { video_url, caption, car_id } = req.body;
-    
+    const { video_url, caption, car_id } = req.body || {};
+    if (!isUploadedReelUrl(video_url)) return res.status(400).json({ error: "Invalid video" });
+    if (car_id) {
+      const car = db.prepare("SELECT id FROM cars WHERE id = ? AND dealer_id = ?").get(car_id, dealer.id);
+      if (!car) return res.status(404).json({ error: "Car not found for this dealer" });
+    }
+
     const result = db.prepare(`
       INSERT INTO reels (dealer_id, video_url, caption, car_id)
       VALUES (?, ?, ?, ?)
-    `).run(dealer.id, video_url, caption, car_id || null);
+    `).run(dealer.id, video_url, typeof caption === "string" ? caption.slice(0, 500) : null, car_id || null);
 
     res.json({ id: result.lastInsertRowid });
+  });
+
+  // A dealer's own reels (the public feed only shows active dealers').
+  app.get("/api/dealer/reels", authenticate, (req: any, res) => {
+    if (req.user.role !== 'dealer') return res.status(403).json({ error: "Only dealers can access this" });
+    const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(req.user.id) as any;
+    if (!dealer) return res.status(404).json({ error: "Dealer profile not found" });
+    res.json(db.prepare(`
+      SELECT r.*, c.make, c.model FROM reels r
+      LEFT JOIN cars c ON r.car_id = c.id
+      WHERE r.dealer_id = ? ORDER BY r.created_at DESC
+    `).all(dealer.id));
+  });
+
+  app.delete("/api/reels/:id", authenticate, (req: any, res) => {
+    if (req.user.role !== 'dealer') return res.status(403).json({ error: "Only dealers can delete reels" });
+    const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(req.user.id) as any;
+    if (!dealer) return res.status(404).json({ error: "Dealer profile not found" });
+    const reel = db.prepare("SELECT id, dealer_id, video_url FROM reels WHERE id = ?").get(req.params.id) as any;
+    if (!reel) return res.status(404).json({ error: "Reel not found" });
+    if (reel.dealer_id !== dealer.id) return res.status(403).json({ error: "Unauthorized to delete this reel" });
+
+    db.prepare("DELETE FROM reel_likes WHERE reel_id = ?").run(reel.id);
+    db.prepare("DELETE FROM reels WHERE id = ?").run(reel.id);
+    // Remove the file too, unless another reel still uses it.
+    const stillUsed = db.prepare("SELECT 1 FROM reels WHERE video_url = ? LIMIT 1").get(reel.video_url);
+    if (!stillUsed && isUploadedReelUrl(reel.video_url)) {
+      fs.promises.unlink(path.join(config.uploadsDir, "reels", path.basename(reel.video_url))).catch(() => {});
+    }
+    res.json({ success: true });
   });
 
   app.post("/api/reels/:id/view", (req, res) => {

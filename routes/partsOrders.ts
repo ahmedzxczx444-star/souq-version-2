@@ -1,6 +1,6 @@
 import express from "express";
 import type Database from "better-sqlite3";
-import { resolveDealerContext } from "./dealerContext";
+import { resolveDealerContext, dealerTypeError } from "./dealerContext";
 
 interface Deps {
   db: Database.Database;
@@ -20,6 +20,11 @@ export function createPartsOrdersRouter({ db, authenticate }: Deps) {
     const ctx = resolveDealerContext(db, req.user.id);
     if (!ctx || !ctx.permissions.manage_parts) {
       res.status(403).json({ error: "No permission to manage orders" });
+      return null;
+    }
+    const typeError = dealerTypeError(db, ctx.dealerId, { businessType: "parts_dealer" });
+    if (typeError) {
+      res.status(403).json({ error: typeError });
       return null;
     }
     return ctx;

@@ -18,21 +18,49 @@ import '../../features/dealers/presentation/all_dealers_screen.dart';
 import '../../features/dealers/presentation/dealer_categories_screen.dart';
 import '../../features/dealers/presentation/dealer_dashboard_screen.dart';
 import '../../features/dealers/presentation/dealer_profile_screen.dart';
+import '../../features/dealers/data/dealer_account.dart';
+import '../../features/dealers/data/dealer_tools_repository.dart';
+import '../../features/dealers/presentation/manage/dealer_reels_screen.dart';
+import '../../features/dealers/presentation/manage/dealer_tool_gate.dart';
+import '../../features/dealers/presentation/manage/dealer_widgets.dart';
+import '../../features/dealers/presentation/manage/resource_list_screen.dart';
+import '../../shared/models/car.dart';
+import '../../shared/models/user.dart';
 import '../../features/ai/presentation/ai_search_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/parts/presentation/add_part_screen.dart';
 import '../../features/parts/presentation/parts_marketplace_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
+import '../../features/profile/presentation/legal_screens.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/settings_screen.dart';
 import '../../features/subscriptions/presentation/subscription_screen.dart';
+import '../../features/dealers/data/resource_specs.dart';
 import '../../shared/providers/auth_provider.dart';
+import '../../shared/providers/language_provider.dart';
 import '../../shared/widgets/main_shell.dart';
 
 /// Routes that require a signed-in user. Unauthenticated visits redirect to
 /// /login, mirroring src/App.tsx rendering <AuthScreen> inline for the
 /// "favorites"/"profile" tabs when `user` is null.
-const _protectedRoutePrefixes = ['/favorites', '/profile', '/add-car', '/edit-profile'];
+const _protectedRoutePrefixes = [
+  '/favorites',
+  '/profile',
+  '/edit-profile',
+  ..._dealerRoutePrefixes,
+];
+
+/// Dealer management screens: signed-in dealers only. Each screen also
+/// checks the dealer type (DealerToolGate), and the API checks both again.
+const _dealerRoutePrefixes = [
+  '/dealer-dashboard',
+  '/dealer-reels',
+  '/dealer-manage',
+  '/add-car',
+  '/edit-car',
+  '/add-part',
+  '/edit-part',
+];
 
 class _RouterRefresh extends ChangeNotifier {
   _RouterRefresh(Ref ref) {
@@ -57,6 +85,9 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (isProtected && !loggedIn) return '/login';
       if (isAuthRoute && loggedIn) return '/home';
+      if (_dealerRoutePrefixes.any(location.startsWith) && !(authState.valueOrNull?.isDealer ?? false)) {
+        return '/profile';
+      }
       return null;
     },
     routes: [
@@ -106,8 +137,53 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/compare', builder: (context, state) => const CompareCarsScreen()),
       GoRoute(path: '/notifications', builder: (context, state) => const NotificationsScreen()),
       GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
-      GoRoute(path: '/add-car', builder: (context, state) => const AddCarScreen()),
-      GoRoute(path: '/add-part', builder: (context, state) => const AddPartScreen()),
+      GoRoute(path: '/terms', builder: (context, state) => const TermsScreen()),
+      GoRoute(path: '/privacy', builder: (context, state) => const PrivacyScreen()),
+      GoRoute(path: '/contact', builder: (context, state) => const ContactScreen()),
+      GoRoute(
+        path: '/add-car',
+        builder: (context, state) => DealerToolGate(tool: DealerTool.addCar, builder: (_) => const AddCarScreen()),
+      ),
+      GoRoute(
+        path: '/edit-car/:id',
+        builder: (context, state) => DealerToolGate(
+          tool: DealerTool.addCar,
+          builder: (_) => _EditLoader<Car>(
+            initial: state.extra is Car ? state.extra as Car : null,
+            provider: dealerCarsProvider,
+            matches: (car) => '${car.id}' == state.pathParameters['id'],
+            builder: (car) => AddCarScreen(car: car),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/add-part',
+        builder: (context, state) => DealerToolGate(tool: DealerTool.addPart, builder: (_) => const AddPartScreen()),
+      ),
+      GoRoute(
+        path: '/edit-part/:id',
+        builder: (context, state) => DealerToolGate(
+          tool: DealerTool.addPart,
+          builder: (_) => _EditLoader<PartItem>(
+            initial: state.extra is PartItem ? state.extra as PartItem : null,
+            provider: dealerPartsProvider,
+            matches: (part) => '${part.id}' == state.pathParameters['id'],
+            builder: (part) => AddPartScreen(part: part),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/dealer-reels',
+        builder: (context, state) => DealerToolGate(tool: DealerTool.reels, builder: (_) => const DealerReelsScreen()),
+      ),
+      GoRoute(
+        path: '/dealer-manage/:tool',
+        builder: (context, state) {
+          final tool = DealerTool.values.where((t) => t.name == state.pathParameters['tool']).firstOrNull;
+          if (tool == null || !resourceSpecs.containsKey(tool)) return const DealerDashboardScreen();
+          return DealerToolGate(tool: tool, builder: (_) => ResourceListScreen(tool: tool));
+        },
+      ),
       GoRoute(path: '/edit-profile', builder: (context, state) => const EditProfileScreen()),
       GoRoute(path: '/dealer-dashboard', builder: (context, state) => const DealerDashboardScreen()),
       GoRoute(path: '/dealer-categories', builder: (context, state) => const DealerCategoriesScreen()),
@@ -115,3 +191,28 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// Opens an edit screen for the record passed along with the navigation,
+/// or — when the route is opened directly — finds it in the dealer's own list.
+class _EditLoader<T> extends ConsumerWidget {
+  const _EditLoader({required this.initial, required this.provider, required this.matches, required this.builder});
+
+  final T? initial;
+  final ProviderListenable<AsyncValue<List<T>>> provider;
+  final bool Function(T item) matches;
+  final Widget Function(T item) builder;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (initial != null) return builder(initial as T);
+    final strings = ref.watch(stringsProvider);
+    return ref.watch(provider).when(
+          loading: () => const Scaffold(body: LoadingView()),
+          error: (e, _) => Scaffold(body: Center(child: Text(errorMessage(e, strings)))),
+          data: (items) {
+            final found = items.where(matches).firstOrNull;
+            return found == null ? const DealerDashboardScreen() : builder(found);
+          },
+        );
+  }
+}

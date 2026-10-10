@@ -119,6 +119,15 @@ class _FakeClient implements ApiClient {
 
   @override
   Future<Response<dynamic>> delete(String path) async => _respond('DELETE', path);
+
+  @override
+  Future<Response<dynamic>> upload(
+    String path, {
+    required String field,
+    required List<({String path, String name, String mimeType})> files,
+    void Function(int sent, int total)? onProgress,
+  }) async =>
+      _respond('UPLOAD', path, files.map((f) => f.name).join(','));
 }
 
 void main() {

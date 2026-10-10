@@ -178,13 +178,22 @@ export function createUser(
   return { id, email, password };
 }
 
-export function createDealer(server: { dbPath: string }, status: string) {
+export function createDealer(
+  server: { dbPath: string },
+  status: string,
+  kind: { category?: string; businessType?: string } = {}
+) {
   const user = createUser(server, { role: "dealer" });
   const dealerId = withDb(server, (db) =>
     Number(
       db
-        .prepare("INSERT INTO dealers (user_id, name, logo, phone, whatsapp_number, branches_count, rating, status) VALUES (?, ?, ?, ?, ?, 1, 5, ?)")
-        .run(user.id, "Test Showroom", "https://example.invalid/logo.png", "+201000000000", "+201000000000", status).lastInsertRowid
+        .prepare(
+          "INSERT INTO dealers (user_id, name, logo, phone, whatsapp_number, branches_count, rating, status, dealer_category, business_type) VALUES (?, ?, ?, ?, ?, 1, 5, ?, ?, ?)"
+        )
+        .run(
+          user.id, "Test Showroom", "https://example.invalid/logo.png", "+201000000000", "+201000000000", status,
+          kind.category ?? "single", kind.businessType ?? "car_dealer"
+        ).lastInsertRowid
     )
   );
   return { ...user, dealerId };

@@ -2,7 +2,7 @@ import express from "express";
 import type Database from "better-sqlite3";
 import type { GoogleGenAI } from "@google/genai";
 import { Type } from "@google/genai";
-import { resolveDealerContext } from "./dealerContext";
+import { resolveDealerContext, dealerTypeError } from "./dealerContext";
 import { searchParts } from "../ai/partsSearchEngine";
 import { recognizePartImage, recognizeBarcode, parseDataUrl } from "../ai/partsRecognition";
 
@@ -89,6 +89,11 @@ export function createPartsRouter({ db, authenticate, genAI, cooldownMiddleware 
     const ctx = resolveDealerContext(db, req.user.id);
     if (!ctx || !ctx.permissions.manage_parts) {
       res.status(403).json({ error: "No permission to manage parts" });
+      return null;
+    }
+    const typeError = dealerTypeError(db, ctx.dealerId, { businessType: "parts_dealer" });
+    if (typeError) {
+      res.status(403).json({ error: typeError });
       return null;
     }
     return ctx;

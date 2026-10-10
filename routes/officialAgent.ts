@@ -1,6 +1,6 @@
 import express from "express";
 import type Database from "better-sqlite3";
-import { resolveDealerContext } from "./dealerContext";
+import { resolveDealerContext, dealerTypeError } from "./dealerContext";
 
 interface Deps {
   db: Database.Database;
@@ -21,6 +21,11 @@ export function createOfficialAgentRouter({ db, authenticate }: Deps) {
     const ctx = resolveDealerContext(db, req.user.id);
     if (!ctx) {
       res.status(403).json({ error: "No dealer account found for this user" });
+      return null;
+    }
+    const typeError = dealerTypeError(db, ctx.dealerId, { categories: ["official_agent"] });
+    if (typeError) {
+      res.status(403).json({ error: typeError });
       return null;
     }
     return ctx;

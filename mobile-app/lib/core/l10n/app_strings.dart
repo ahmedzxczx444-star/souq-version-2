@@ -265,3 +265,37 @@ extension MarketplaceStrings on AppStrings {
   String get inventory => isArabic ? 'المخزون' : 'Inventory';
   String get verifiedDealer => isArabic ? 'تاجر موثق' : 'Verified Dealer';
 }
+
+/// Settings, account management and legal links (SettingsScreen.tsx and
+/// PrivacySecurityScreen.tsx on the site).
+extension SettingsStrings on AppStrings {
+  String get settings => isArabic ? 'الإعدادات' : 'Settings';
+  String get editProfile => isArabic ? 'تعديل الملف الشخصي' : 'Edit Profile';
+  String get notifications => isArabic ? 'الإشعارات' : 'Notifications';
+  String get dealerDashboard => isArabic ? 'لوحة التاجر' : 'Dealer Dashboard';
+  String get language => isArabic ? 'اللغة' : 'Language';
+  String get currentLanguage => isArabic ? 'العربية' : 'English';
+  String get account => isArabic ? 'الحساب' : 'Account';
+  String get legal => isArabic ? 'معلومات' : 'About';
+  String get changePassword => isArabic ? 'تغيير كلمة المرور' : 'Change Password';
+  String get currentPassword => isArabic ? 'كلمة المرور الحالية' : 'Current password';
+  String get passwordChanged => isArabic ? 'تم تغيير كلمة المرور' : 'Password changed';
+  String get logoutAll => isArabic ? 'تسجيل الخروج من جميع الأجهزة' : 'Log out of all devices';
+  String get logoutAllBody => isArabic
+      ? 'سيتم إنهاء جميع الجلسات، بما فيها هذا الجهاز.'
+      : 'Every session will be ended, including this device.';
+  String get deleteAccount => isArabic ? 'حذف الحساب' : 'Delete Account';
+  String get deleteAccountBody => isArabic
+      ? 'سيتم حذف حسابك وبياناتك الشخصية نهائياً، ولا يمكن التراجع عن ذلك. إذا كان لديك معرض فسيتم إخفاؤه مع جميع إعلاناته.'
+      : 'Your account and personal data will be permanently deleted. This cannot be undone. If you have a showroom, it and all its listings will be removed from the marketplace.';
+  String get deleteAccountConfirm => isArabic ? 'حذف حسابي نهائياً' : 'Delete my account';
+  String get accountDeleted => isArabic ? 'تم حذف حسابك' : 'Your account has been deleted';
+  String get cancel => isArabic ? 'إلغاء' : 'Cancel';
+  String get confirm => isArabic ? 'تأكيد' : 'Confirm';
+  String get save => isArabic ? 'حفظ' : 'Save';
+  String get terms => isArabic ? 'الشروط والأحكام' : 'Terms & Conditions';
+  String get privacyPolicy => isArabic ? 'سياسة الخصوصية' : 'Privacy Policy';
+  String get contactUs => isArabic ? 'تواصل معنا' : 'Contact Us';
+  String get signInToManage => isArabic ? 'سجّل الدخول لإدارة حسابك' : 'Sign in to manage your account';
+  String get genericError => isArabic ? 'حدث خطأ، حاول مرة أخرى' : 'Something went wrong, please try again';
+}

@@ -49,3 +49,44 @@ export function resolveDealerContext(db: Database.Database, userId: number): Dea
 
   return null;
 }
+
+export interface DealerKind {
+  businessType: string; // 'car_dealer' | 'parts_dealer'
+  dealerCategory: string; // 'single' | 'multi_branch' | 'chain' | 'importer' | 'official_agent'
+  status: string;
+}
+
+/** The dealer's type, read from the database (never from the client). */
+export function getDealerKind(db: Database.Database, dealerId: number): DealerKind | null {
+  const row = db.prepare("SELECT business_type, dealer_category, status FROM dealers WHERE id = ?").get(dealerId) as
+    | { business_type: string | null; dealer_category: string | null; status: string | null }
+    | undefined;
+  if (!row) return null;
+  return {
+    businessType: row.business_type || "car_dealer",
+    dealerCategory: row.dealer_category || "single",
+    status: row.status || "pending",
+  };
+}
+
+/**
+ * Each dealer type has its own dashboard on the site; the matching API must
+ * refuse the other types too, not just be hidden from them. Returns an error
+ * message when this dealer may not use a feature reserved for [categories]
+ * (car-dealer categories) or [businessType].
+ */
+export function dealerTypeError(
+  db: Database.Database,
+  dealerId: number,
+  allowed: { categories?: string[]; businessType?: string }
+): string | null {
+  const kind = getDealerKind(db, dealerId);
+  if (!kind) return "No dealer account found for this user";
+  if (allowed.businessType && kind.businessType !== allowed.businessType) {
+    return "This feature is not available for your dealer type";
+  }
+  if (allowed.categories && (kind.businessType !== "car_dealer" || !allowed.categories.includes(kind.dealerCategory))) {
+    return "This feature is not available for your dealer type";
+  }
+  return null;
+}

@@ -94,4 +94,17 @@ class AuthRepository {
         'otp': otp,
         'password': password,
       });
+
+  Future<void> changePassword({required String currentPassword, required String newPassword}) =>
+      _client.post(ApiEndpoints.changePassword, data: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      });
+
+  /// Ends every session, including the one making the call.
+  Future<void> logoutAll() => _client.post(ApiEndpoints.logoutAll);
+
+  /// Permanently closes the signed-in account (POST /api/auth/delete-account).
+  Future<void> deleteAccount(String password) =>
+      _client.post(ApiEndpoints.deleteAccount, data: {'password': password});
 }

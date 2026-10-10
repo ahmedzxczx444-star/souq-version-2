@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/models/user.dart';
 import '../../../shared/providers/auth_provider.dart';
@@ -60,10 +61,10 @@ class ProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
           if (user.isDealer)
-            _MenuTile(icon: Icons.dashboard_rounded, label: strings.appName, onTap: () => context.push('/dealer-dashboard')),
-          _MenuTile(icon: Icons.edit_rounded, label: 'Edit Profile', onTap: () => context.push('/edit-profile')),
-          _MenuTile(icon: Icons.notifications_none_rounded, label: 'Notifications', onTap: () => context.push('/notifications')),
-          _MenuTile(icon: Icons.settings_outlined, label: 'Settings', onTap: () => context.push('/settings')),
+            _MenuTile(icon: Icons.dashboard_rounded, label: strings.dealerDashboard, onTap: () => context.push('/dealer-dashboard')),
+          _MenuTile(icon: Icons.edit_rounded, label: strings.editProfile, onTap: () => context.push('/edit-profile')),
+          _MenuTile(icon: Icons.notifications_none_rounded, label: strings.notifications, onTap: () => context.push('/notifications')),
+          _MenuTile(icon: Icons.settings_outlined, label: strings.settings, onTap: () => context.push('/settings')),
           const SizedBox(height: 12),
           _MenuTile(
             icon: Icons.logout_rounded,

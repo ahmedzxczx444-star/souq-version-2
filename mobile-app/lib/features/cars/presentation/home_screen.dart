@@ -500,14 +500,14 @@ class _Footer extends StatelessWidget {
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.6, color: AppColors.gray900),
           ),
           const SizedBox(height: 24),
-          const Wrap(
+          Wrap(
             alignment: WrapAlignment.center,
             spacing: 32,
             runSpacing: 16,
             children: [
-              Text('الشروط والأحكام', style: link),
-              Text('سياسة الخصوصية', style: link),
-              Text('تواصل معنا', style: link),
+              GestureDetector(onTap: () => context.push('/terms'), child: const Text('الشروط والأحكام', style: link)),
+              GestureDetector(onTap: () => context.push('/privacy'), child: const Text('سياسة الخصوصية', style: link)),
+              GestureDetector(onTap: () => context.push('/contact'), child: const Text('تواصل معنا', style: link)),
             ],
           ),
           const SizedBox(height: 40),

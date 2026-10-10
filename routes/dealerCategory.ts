@@ -1,6 +1,6 @@
 import express from "express";
 import type Database from "better-sqlite3";
-import { resolveDealerContext } from "./dealerContext";
+import { resolveDealerContext, dealerTypeError } from "./dealerContext";
 
 interface Deps {
   db: Database.Database;
@@ -22,6 +22,11 @@ export function createDealerCategoryRouter({ db, authenticate }: Deps) {
     const ctx = resolveDealerContext(db, req.user.id);
     if (!ctx) {
       res.status(403).json({ error: "No dealer account found for this user" });
+      return null;
+    }
+    const typeError = dealerTypeError(db, ctx.dealerId, { categories: ["multi_branch", "chain"] });
+    if (typeError) {
+      res.status(403).json({ error: typeError });
       return null;
     }
     return ctx;
@@ -199,6 +204,8 @@ export function createDealerCategoryRouter({ db, authenticate }: Deps) {
     const ctx = requireContext(req, res);
     if (!ctx) return;
     if (!ctx.permissions.view_reports) return res.status(403).json({ error: "No permission to view reports" });
+    const chainError = dealerTypeError(db, ctx.dealerId, { categories: ["chain"] });
+    if (chainError) return res.status(403).json({ error: chainError });
 
     const branches = db.prepare("SELECT * FROM dealer_branches WHERE dealer_id = ? ORDER BY is_headquarters DESC, id ASC").all(ctx.dealerId) as any[];
     const totalCars = db.prepare("SELECT COUNT(*) as count FROM cars WHERE dealer_id = ?").get(ctx.dealerId) as any;
