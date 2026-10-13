@@ -37,7 +37,11 @@ export function unusablePasswordHash(): string {
  * replaced when ADMIN_PASSWORD_FORCE_RESET is set; an existing non-admin
  * account is never promoted.
  */
-export function ensureAdminAccount(db: Database.Database, config: AppConfig): "created" | "reset" | "unchanged" | "skipped" {
+export function ensureAdminAccount(
+  db: Database.Database,
+  config: AppConfig,
+  options: { forceReset?: boolean } = {}
+): "created" | "reset" | "unchanged" | "skipped" {
   if (!config.adminEmail || !config.adminPassword) return "skipped";
 
   const existing = db.prepare("SELECT id, role FROM users WHERE lower(email) = ?").get(config.adminEmail) as
@@ -58,7 +62,7 @@ export function ensureAdminAccount(db: Database.Database, config: AppConfig): "c
     return "unchanged";
   }
 
-  if (config.adminPasswordForceReset) {
+  if (config.adminPasswordForceReset || options.forceReset) {
     db.prepare("UPDATE users SET password = ?, is_verified = 1 WHERE id = ?").run(bcrypt.hashSync(config.adminPassword, 12), existing.id);
     bumpTokenVersion(db, existing.id);
     return "reset";
@@ -85,25 +89,52 @@ const LEGACY_REVOKED_KEY = "legacy_seed_credentials_revoked";
  * is the legacy one).
  */
 export function revokeLegacySeedCredentials(db: Database.Database, config: AppConfig): number {
-  if (!config.isProduction) return 0;
+  return revokeLegacySeedAccounts(db, config).length;
+}
+
+function revokeLegacySeedAccounts(db: Database.Database, config: AppConfig): string[] {
+  if (!config.isProduction) return [];
 
   db.exec("CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT)");
   const done = db.prepare("SELECT value FROM app_meta WHERE key = ?").get(LEGACY_REVOKED_KEY);
-  if (done) return 0;
+  if (done) return [];
 
-  let revoked = 0;
+  const revoked: string[] = [];
   const run = db.transaction(() => {
     for (const email of LEGACY_SEED_EMAILS) {
       const user = db.prepare("SELECT id FROM users WHERE lower(email) = ?").get(email) as { id: number } | undefined;
       if (!user) continue;
       db.prepare("UPDATE users SET password = ? WHERE id = ?").run(unusablePasswordHash(), user.id);
       bumpTokenVersion(db, user.id);
-      revoked++;
+      revoked.push(email);
     }
     db.prepare("INSERT INTO app_meta (key, value) VALUES (?, ?)").run(LEGACY_REVOKED_KEY, new Date().toISOString());
   });
   run();
   return revoked;
+}
+
+/**
+ * Startup account maintenance, in the only safe order: legacy seed passwords
+ * are retired first, then the administrator from ADMIN_EMAIL / ADMIN_PASSWORD
+ * is created or reset. The other way round, a database's first production
+ * start would reset the admin's password and disable it again straight away
+ * whenever ADMIN_EMAIL is the legacy admin address.
+ *
+ * If ADMIN_EMAIL is a legacy account whose password was retired in this very
+ * start, ADMIN_PASSWORD is applied to it even without
+ * ADMIN_PASSWORD_FORCE_RESET, so the administrator is never left without a
+ * working password. Nothing is created or removed here except the
+ * administrator account itself.
+ */
+export function bootstrapAccounts(
+  db: Database.Database,
+  config: AppConfig
+): { admin: "created" | "reset" | "unchanged" | "skipped"; revoked: number } {
+  const revoked = revokeLegacySeedAccounts(db, config);
+  const adminJustRevoked = Boolean(config.adminEmail) && revoked.includes(config.adminEmail!);
+  const admin = ensureAdminAccount(db, config, { forceReset: adminJustRevoked });
+  return { admin, revoked: revoked.length };
 }
 
 /**

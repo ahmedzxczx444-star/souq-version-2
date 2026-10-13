@@ -30,10 +30,9 @@ import { respondWithPartsCandidates, buildDeterministicPartsReply } from "./ai/p
 import { loadConfig, ConfigError, AppConfig } from "./config";
 import {
   accountBlockReason,
+  bootstrapAccounts,
   bumpTokenVersion,
-  ensureAdminAccount,
   makeAsyncSafe,
-  revokeLegacySeedCredentials,
   unusablePasswordHash,
 } from "./services/accounts";
 
@@ -591,11 +590,10 @@ if (config.seedDemoData && dealerCount.count === 0 && carCount.count === 0 && me
 // startup must never change a dealer's status.
 
 {
-  const adminResult = ensureAdminAccount(db, config);
+  const { admin: adminResult, revoked } = bootstrapAccounts(db, config);
+  if (revoked > 0) console.warn(`[accounts] Disabled the passwords of ${revoked} legacy seed account(s).`);
   if (adminResult === "created") console.log("[accounts] Created the administrator account from ADMIN_EMAIL.");
   if (adminResult === "reset") console.log("[accounts] Administrator password reset from ADMIN_PASSWORD.");
-  const revoked = revokeLegacySeedCredentials(db, config);
-  if (revoked > 0) console.warn(`[accounts] Disabled the passwords of ${revoked} legacy seed account(s).`);
   const adminCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'super_admin'").get() as { count: number };
   if (adminCount.count === 0) {
     console.warn("[accounts] No administrator account exists. Set ADMIN_EMAIL and ADMIN_PASSWORD to create one.");

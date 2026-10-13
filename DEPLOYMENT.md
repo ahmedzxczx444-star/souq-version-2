@@ -77,9 +77,16 @@ Keep the service at one replica.
    `/data/automarket.db` and `/data/uploads/`.
 3. Start the new server. On its first production start it disables the
    passwords of the old demo/seed accounts (their logins were public) and
-   keeps the accounts, dealers and listings. Use `ADMIN_EMAIL` /
-   `ADMIN_PASSWORD` (plus `ADMIN_PASSWORD_FORCE_RESET=true` if you reuse the
-   old admin email) to regain admin access.
+   keeps the accounts, dealers and listings. Then it creates or updates the
+   administrator from `ADMIN_EMAIL` / `ADMIN_PASSWORD`:
+   - A new address (recommended) creates a fresh administrator; the old
+     admin account stays disabled.
+   - The old admin email set on that first start gets `ADMIN_PASSWORD`
+     straight away.
+   - If the first start ran without `ADMIN_EMAIL` / `ADMIN_PASSWORD`, set them
+     and restart. A new address needs nothing else; the old admin email also
+     needs `ADMIN_PASSWORD_FORCE_RESET=true` for one start, because an
+     existing admin's password is never replaced without it.
 
 ## Backups
 
