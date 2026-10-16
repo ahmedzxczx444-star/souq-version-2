@@ -11,6 +11,7 @@ import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/primary_button.dart';
+import '../../../core/network/error_text.dart';
 
 /// Mirrors src/screens/AuthScreen.tsx's OTP step: 6 single-digit boxes,
 /// 60s resend cooldown, and — only for purpose=forgot_password — a new
@@ -112,7 +113,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       await Future.delayed(const Duration(milliseconds: 900));
       if (mounted) context.go('/login');
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      setState(() => _error = errorMessage(e, ref.read(stringsProvider)));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -136,7 +137,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       _digitFocus.first.requestFocus();
     } on ApiException catch (e) {
       setState(() {
-        _error = e.message;
+        _error = errorMessage(e, ref.read(stringsProvider));
         if (e.cooldownSeconds != null) _cooldown = e.cooldownSeconds!;
       });
     } finally {

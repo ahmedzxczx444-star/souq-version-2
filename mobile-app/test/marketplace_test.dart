@@ -112,7 +112,7 @@ class _FakeClient implements ApiClient {
   Future<Response<dynamic>> get(String path, {Map<String, dynamic>? query}) async => _respond('GET', path, query);
 
   @override
-  Future<Response<dynamic>> post(String path, {Object? data}) async => _respond('POST', path, data);
+  Future<Response<dynamic>> post(String path, {Object? data, Duration? timeout}) async => _respond('POST', path, data);
 
   @override
   Future<Response<dynamic>> put(String path, {Object? data}) async => _respond('PUT', path, data);

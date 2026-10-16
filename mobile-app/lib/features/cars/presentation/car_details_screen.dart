@@ -5,14 +5,18 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/l10n/app_strings.dart';
+import '../../../core/l10n/market_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/phone_utils.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/compare_provider.dart';
 import '../../../shared/providers/favorites_provider.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/models/car.dart';
 import '../../../shared/widgets/web_layout.dart';
+import '../../dealers/presentation/manage/dealer_widgets.dart' show ErrorView, errorMessage;
 
 final _carDetailsProvider = FutureProvider.autoDispose.family((ref, int id) {
   return ref.watch(carRepositoryProvider).getById(id);
@@ -35,20 +39,42 @@ class _CarDetailsScreenState extends ConsumerState<CarDetailsScreen> {
   int _activeImage = 0;
   static final _priceFormat = NumberFormat.decimalPattern();
 
+  void _toggleCompare(Car car, AppStrings strings) {
+    final notifier = ref.read(compareProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    if (!notifier.toggle(car)) {
+      messenger.showSnackBar(SnackBar(content: Text(strings.compareFull)));
+      return;
+    }
+    final count = ref.read(compareProvider).length;
+    if (!notifier.contains(car.id)) return;
+    messenger.showSnackBar(SnackBar(
+      content: Text(strings.addToCompare),
+      action: SnackBarAction(label: strings.compareCount(count), onPressed: () => context.push('/compare')),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
     final carAsync = ref.watch(_carDetailsProvider(widget.carId));
     final favorites = ref.watch(favoritesProvider).valueOrNull ?? <int>{};
     final isFavorite = favorites.contains(widget.carId);
+    final inCompare = ref.watch(compareProvider).any((c) => c.id == widget.carId);
 
     return Scaffold(
       body: WebColumn(
         child: carAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.emeraldAccent)),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => ErrorView(
+          message: errorMessage(e, strings),
+          onRetry: () => ref.invalidate(_carDetailsProvider(widget.carId)),
+          strings: strings,
+        ),
         data: (car) {
           final whatsappLink = toWhatsappLink(car.dealerWhatsapp);
+          final hasPhone = (car.dealerPhone ?? '').trim().isNotEmpty;
           return Stack(
             children: [
               ListView(
@@ -71,6 +97,13 @@ class _CarDetailsScreenState extends ConsumerState<CarDetailsScreen> {
                           children: [
                             _GlassIconButton(icon: Icons.arrow_back_rounded, onTap: () => context.pop()),
                             Row(children: [
+                              _GlassIconButton(
+                                key: const Key('compare-toggle'),
+                                icon: inCompare ? Icons.playlist_add_check_rounded : Icons.compare_arrows_rounded,
+                                color: inCompare ? AppColors.emeraldAccent : AppColors.white,
+                                onTap: () => _toggleCompare(car, strings),
+                              ),
+                              const SizedBox(width: 8),
                               _GlassIconButton(
                                 icon: isFavorite ? Icons.favorite : Icons.favorite_border,
                                 color: isFavorite ? AppColors.red500 : AppColors.white,
@@ -149,7 +182,7 @@ class _CarDetailsScreenState extends ConsumerState<CarDetailsScreen> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Text('${_priceFormat.format(car.price)} ج.م',
+                                Text('${_priceFormat.format(car.price)} ${strings.currency}',
                                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
                                 Text(strings.fixedPrice, style: const TextStyle(fontSize: 10, color: AppColors.gray400, fontWeight: FontWeight.w700)),
                               ],
@@ -219,20 +252,21 @@ class _CarDetailsScreenState extends ConsumerState<CarDetailsScreen> {
                         Expanded(
                           child: _ActionButton(
                             icon: Icons.chat_bubble_rounded,
-                            label: 'واتساب',
+                            label: strings.whatsapp,
                             color: AppColors.emerald500,
                             onTap: () => launchUrl(Uri.parse(whatsappLink), mode: LaunchMode.externalApplication),
                           ),
                         ),
-                      if (whatsappLink != null) const SizedBox(width: 12),
-                      Expanded(
-                        child: _ActionButton(
-                          icon: Icons.call_rounded,
-                          label: strings.contact,
-                          color: AppColors.black,
-                          onTap: () => launchUrl(Uri.parse('tel:${car.dealerPhone ?? ''}')),
+                      if (whatsappLink != null && hasPhone) const SizedBox(width: 12),
+                      if (hasPhone)
+                        Expanded(
+                          child: _ActionButton(
+                            icon: Icons.call_rounded,
+                            label: strings.contact,
+                            color: AppColors.black,
+                            onTap: () => launchUrl(Uri.parse('tel:${car.dealerPhone}')),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -307,7 +341,7 @@ class _ActionButton extends StatelessWidget {
 }
 
 class _GlassIconButton extends StatelessWidget {
-  const _GlassIconButton({required this.icon, required this.onTap, this.color = AppColors.white});
+  const _GlassIconButton({super.key, required this.icon, required this.onTap, this.color = AppColors.white});
 
   final IconData icon;
   final VoidCallback onTap;

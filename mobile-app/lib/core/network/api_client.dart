@@ -55,8 +55,10 @@ class ApiClient {
   Future<Response<dynamic>> get(String path, {Map<String, dynamic>? query}) =>
       _run(() => _dio.get(path, queryParameters: query));
 
-  Future<Response<dynamic>> post(String path, {Object? data}) =>
-      _run(() => _dio.post(path, data: data));
+  /// [timeout] overrides the default receive timeout for slow endpoints
+  /// (the AI search can take far longer than an ordinary JSON call).
+  Future<Response<dynamic>> post(String path, {Object? data, Duration? timeout}) =>
+      _run(() => _dio.post(path, data: data, options: timeout == null ? null : Options(receiveTimeout: timeout)));
 
   Future<Response<dynamic>> put(String path, {Object? data}) =>
       _run(() => _dio.put(path, data: data));
@@ -98,14 +100,19 @@ class ApiClient {
   }
 
   ApiException _toApiException(DioException e) {
-    final data = e.response?.data;
+    final response = e.response;
+    if (response == null) {
+      // No answer at all: keep Dio's English text out of the UI.
+      final timedOut = e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout;
+      return ApiException('', kind: timedOut ? ApiErrorKind.timeout : ApiErrorKind.network);
+    }
+    final data = response.data;
     final body = data is Map<String, dynamic> ? data : const <String, dynamic>{};
-    final message = (body['error'] as String?) ??
-        e.message ??
-        'Something went wrong. Please try again.';
     return ApiException(
-      message,
-      statusCode: e.response?.statusCode,
+      (body['error'] as String?) ?? '',
+      statusCode: response.statusCode,
       requiresOtpVerification: body['requiresOtpVerification'] == true,
       email: body['email'] as String?,
       cooldownSeconds: body['cooldownSeconds'] as int?,

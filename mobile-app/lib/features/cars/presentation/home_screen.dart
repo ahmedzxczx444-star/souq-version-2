@@ -14,6 +14,7 @@ import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/car_card.dart';
 import '../../../shared/widgets/dealer_card.dart';
 import '../../../shared/widgets/web_layout.dart';
+import '../../../core/l10n/market_strings.dart';
 
 /// Home data, loaded together like HomeScreen.tsx's `Promise.all`.
 typedef HomeData = ({List<Car> cars, List<Dealer> topDealers});
@@ -108,6 +109,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         onSearch: _search,
                         onToggleLanguage: () => ref.read(languageProvider.notifier).toggle(),
                         onSmartAi: () => context.push('/ai-search'),
+                        onParts: () => context.push('/parts'),
                       ),
                     ),
                     _SectionCard(
@@ -260,6 +262,7 @@ class _HeroContent extends StatelessWidget {
     required this.onSearch,
     required this.onToggleLanguage,
     required this.onSmartAi,
+    required this.onParts,
   });
 
   final AppStrings strings;
@@ -267,6 +270,7 @@ class _HeroContent extends StatelessWidget {
   final VoidCallback onSearch;
   final VoidCallback onToggleLanguage;
   final VoidCallback onSmartAi;
+  final VoidCallback onParts;
 
   @override
   Widget build(BuildContext context) {
@@ -399,19 +403,33 @@ class _HeroContent extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.auto_awesome_outlined, size: 20, color: AppColors.white),
-                      SizedBox(width: 8),
+                      const Icon(Icons.auto_awesome_outlined, size: 20, color: AppColors.white),
+                      const SizedBox(width: 8),
                       Text(
-                        'سوق السيارات الذكي',
-                        style: TextStyle(color: AppColors.white, fontWeight: FontWeight.w700, fontSize: 14),
+                        strings.smartAi,
+                        style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.w700, fontSize: 14),
                       ),
                     ],
                   ),
                 ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                key: const Key('home-parts'),
+                onPressed: onParts,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                  foregroundColor: AppColors.white,
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+                  backgroundColor: Colors.white.withValues(alpha: 0.08),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                icon: const Icon(Icons.settings_suggest_outlined, size: 20),
+                label: Text(strings.partsMarket, style: const TextStyle(fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -508,14 +526,14 @@ class _Footer extends StatelessWidget {
             spacing: 32,
             runSpacing: 16,
             children: [
-              GestureDetector(onTap: () => context.push('/terms'), child: const Text('الشروط والأحكام', style: link)),
-              GestureDetector(onTap: () => context.push('/privacy'), child: const Text('سياسة الخصوصية', style: link)),
-              GestureDetector(onTap: () => context.push('/contact'), child: const Text('تواصل معنا', style: link)),
+              GestureDetector(onTap: () => context.push('/terms'), child: Text(strings.termsTitle, style: link)),
+              GestureDetector(onTap: () => context.push('/privacy'), child: Text(strings.privacyTitle, style: link)),
+              GestureDetector(onTap: () => context.push('/contact'), child: Text(strings.contactUs, style: link)),
             ],
           ),
           const SizedBox(height: 40),
           Text(
-            '© ${DateTime.now().year} ${strings.appName}. جميع الحقوق محفوظة.',
+            '© ${DateTime.now().year} ${strings.appName}. ${strings.rightsReserved}',
             textAlign: TextAlign.center,
             style: const TextStyle(color: AppColors.gray500, fontSize: 12, fontWeight: FontWeight.w500),
           ),

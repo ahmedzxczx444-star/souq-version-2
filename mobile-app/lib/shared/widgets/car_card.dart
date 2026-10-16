@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/relative_time.dart';
 import '../models/car.dart';
 import 'car_image_carousel.dart';
+import '../../core/l10n/market_strings.dart';
 
 enum CarCardVariant { feed, grid }
 
@@ -250,7 +251,7 @@ class CarCardWidget extends StatelessWidget {
                     ),
                     const Spacer(),
                     Text(
-                      '${_number.format(car.price)} ج.م',
+                      '${_number.format(car.price)} ${strings.currency}',
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppColors.emeraldAccent),
                     ),
                   ],
@@ -426,7 +427,7 @@ class CarCardWidget extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${car.year} موديل',
+                    strings.modelYear(car.year),
                     style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: AppColors.gray400),
                   ),
                   const SizedBox(height: 10),
@@ -450,7 +451,7 @@ class CarCardWidget extends StatelessWidget {
                             children: [
                               const Icon(Icons.speed, size: 8, color: AppColors.emeraldAccent),
                               const SizedBox(width: 4),
-                              Opacity(opacity: 0.7, child: Text('${_number.format(car.mileage)} كم')),
+                              Opacity(opacity: 0.7, child: Text('${_number.format(car.mileage)} ${strings.km}')),
                               const Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 4),
                                 child: Opacity(opacity: 0.2, child: Text('|')),

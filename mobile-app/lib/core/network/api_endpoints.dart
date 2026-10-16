@@ -114,6 +114,16 @@ class ApiEndpoints {
   static String partOrderStatus(int id) => '/api/parts/orders/$id/status';
 
   // Favorites
+  // Smart AI search and notifications
+  static const aiSearchChat = '/api/ai-search/chat';
+  static const notifications = '/api/notifications';
+  static String notificationRead(int id) => '/api/notifications/$id/read';
+
+  // Parts marketplace (buyers)
+  static const partsSearch = '/api/parts/search/query';
+  static String partOrder(int id) => '/api/parts/$id/order';
+  static const myPartOrders = '/api/parts/my-orders';
+
   static const favorites = '/api/favorites';
   static String favoriteToggle(int carId) => '/api/favorites/$carId';
 }

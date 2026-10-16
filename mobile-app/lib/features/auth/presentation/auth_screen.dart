@@ -9,6 +9,9 @@ import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/primary_button.dart';
+import '../../../core/network/error_text.dart';
+import '../../../core/l10n/market_strings.dart';
+import '../../dealers/presentation/manage/dealer_widgets.dart' show LabeledDropdown;
 
 enum _AuthMode { login, register, forgotPassword }
 
@@ -35,6 +38,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   _AuthMode _mode = _AuthMode.login;
   String _role = 'user';
+  // Dealer sign-up, as on the site: cars or parts; car dealers also pick a
+  // category (POST /api/auth/register business_type / dealer_category).
+  String _businessType = 'car_dealer';
+  String _dealerCategory = 'single';
 
   final _name = TextEditingController();
   final _email = TextEditingController();
@@ -69,7 +76,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       _message = null;
     });
 
+    if (_email.text.trim().isEmpty) {
+      setState(() => _error = strings.emailRequired);
+      return;
+    }
+    if (_mode != _AuthMode.forgotPassword && _password.text.isEmpty) {
+      setState(() => _error = strings.passwordRequired);
+      return;
+    }
     if (_mode == _AuthMode.register) {
+      if (_name.text.trim().isEmpty) {
+        setState(() => _error = strings.nameRequired);
+        return;
+      }
       if (_password.text.length < 6) {
         setState(() => _error = strings.passwordTooShort);
         return;
@@ -80,8 +99,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       }
       if (_role == 'dealer' &&
           (!isValidEgyptLocalPhone(_phone.text) || !isValidEgyptLocalPhone(_whatsapp.text))) {
-        setState(() => _error =
-            'Please enter your phone number without the leading zero and without the country code.');
+        setState(() => _error = strings.phoneFormatError);
         return;
       }
     }
@@ -115,6 +133,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 'whatsapp_number': toEgyptE164(_whatsapp.text),
                 'branches_count': int.tryParse(_branches.text) ?? 1,
                 'address': _address.text.trim(),
+                'business_type': _businessType,
+                if (_businessType == 'car_dealer') 'dealer_category': _dealerCategory,
               }
             : const {},
       );
@@ -126,9 +146,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         context.push('/otp?email=${Uri.encodeComponent(e.email!)}&purpose=register');
         return;
       }
-      setState(() => _error = e.message);
+      setState(() => _error = errorMessage(e, ref.read(stringsProvider)));
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = errorMessage(e, ref.read(stringsProvider)));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -137,16 +157,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
-    final lang = ref.watch(languageProvider);
-    final isAr = lang.name == 'ar';
 
     final title = _mode == _AuthMode.forgotPassword
-        ? (isAr ? 'نسيت كلمة المرور' : 'Forgot Password')
+        ? strings.forgotPasswordTitle
         : _mode == _AuthMode.login
             ? strings.welcomeBack
             : strings.createAccount;
     final subtitle = _mode == _AuthMode.forgotPassword
-        ? (isAr ? 'أدخل بريدك الإلكتروني لاستلام رمز التحقق' : 'Enter your email to receive a verification code')
+        ? strings.forgotPasswordSubtitle
         : _mode == _AuthMode.login
             ? strings.signInToContinue
             : strings.joinExclusive;
@@ -206,27 +224,58 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   ),
                   if (_role == 'dealer') ...[
                     const SizedBox(height: 16),
+                    Text(strings.businessType, style: const TextStyle(color: AppColors.gray500, fontWeight: FontWeight.w700, fontSize: 12)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(child: _RoleChip(
+                          key: const Key('business-car'),
+                          label: strings.carDealerType,
+                          selected: _businessType == 'car_dealer',
+                          onTap: () => setState(() => _businessType = 'car_dealer'),
+                        )),
+                        const SizedBox(width: 12),
+                        Expanded(child: _RoleChip(
+                          key: const Key('business-parts'),
+                          label: strings.partsDealerType,
+                          selected: _businessType == 'parts_dealer',
+                          onTap: () => setState(() => _businessType = 'parts_dealer'),
+                        )),
+                      ],
+                    ),
+                    if (_businessType == 'car_dealer')
+                      LabeledDropdown(
+                        key: const Key('dealer-category'),
+                        label: strings.dealerCategory,
+                        value: _dealerCategory,
+                        items: {
+                          for (final c in const ['single', 'multi_branch', 'chain', 'importer', 'official_agent'])
+                            c: strings.dealerCategoryLabel(c),
+                        },
+                        onChanged: (v) => setState(() => _dealerCategory = v),
+                      ),
+                    const SizedBox(height: 16),
                     TextField(
                       controller: _phone,
                       keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(prefixText: '+20  ', hintText: '1155336849'),
+                      decoration: InputDecoration(labelText: strings.phoneLabel, prefixText: '+20  ', hintText: '1155336849'),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _whatsapp,
                       keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(prefixText: '+20  ', hintText: '1155336849'),
+                      decoration: InputDecoration(labelText: strings.whatsappLabel, prefixText: '+20  ', hintText: '1155336849'),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _branches,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(hintText: isAr ? 'عدد الفروع' : 'Number of branches'),
+                      decoration: InputDecoration(hintText: strings.branchesLabel),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _address,
-                      decoration: InputDecoration(hintText: isAr ? 'العنوان' : 'Address'),
+                      decoration: InputDecoration(hintText: strings.addressLabel),
                     ),
                   ],
                 ],
@@ -277,7 +326,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       if (_mode == _AuthMode.login)
                         TextButton(
                           onPressed: () => context.go('/home'),
-                          child: Text(isAr ? 'تصفح بدون تسجيل' : 'Continue as guest'),
+                          child: Text(strings.continueAsGuest),
                         ),
                     ],
                   ),
@@ -292,7 +341,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 }
 
 class _RoleChip extends StatelessWidget {
-  const _RoleChip({required this.label, required this.selected, required this.onTap});
+  const _RoleChip({super.key, required this.label, required this.selected, required this.onTap});
 
   final String label;
   final bool selected;

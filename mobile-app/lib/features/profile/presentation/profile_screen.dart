@@ -7,13 +7,11 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/models/user.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/language_provider.dart';
+import '../../../core/l10n/market_strings.dart';
 
-/// Mirrors src/screens/ProfileScreen.tsx's account menu. Only the
-/// account-info header, logout, and links that route to Phase-1 screens
-/// are wired for real; everything else (My Listings, dealer-category
-/// dashboards, settings, notifications, subscription) routes to a
-/// ComingSoonScreen placeholder until its own feature pass — see
-/// core/router/app_router.dart for the full route list.
+/// Mirrors src/screens/ProfileScreen.tsx's account menu: account header,
+/// dealer dashboard (dealers only), profile, notifications, parts orders,
+/// spare parts, comparison, settings and logout.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -64,6 +62,9 @@ class ProfileScreen extends ConsumerWidget {
             _MenuTile(icon: Icons.dashboard_rounded, label: strings.dealerDashboard, onTap: () => context.push('/dealer-dashboard')),
           _MenuTile(icon: Icons.edit_rounded, label: strings.editProfile, onTap: () => context.push('/edit-profile')),
           _MenuTile(icon: Icons.notifications_none_rounded, label: strings.notifications, onTap: () => context.push('/notifications')),
+          _MenuTile(icon: Icons.receipt_long_outlined, label: strings.myPartOrders, onTap: () => context.push('/my-part-orders')),
+          _MenuTile(icon: Icons.settings_suggest_outlined, label: strings.partsMarket, onTap: () => context.push('/parts')),
+          _MenuTile(icon: Icons.compare_arrows_rounded, label: strings.compare, onTap: () => context.push('/compare')),
           _MenuTile(icon: Icons.settings_outlined, label: strings.settings, onTap: () => context.push('/settings')),
           const SizedBox(height: 12),
           _MenuTile(

@@ -60,14 +60,14 @@ dependencies:
   # Deep links (tel:, wa.me, mailto:)
   url_launcher: ^6.3.1
 
-  # Native integrations (wired now, activated in later phases)
   # firebase_core / firebase_messaging removed: unused anywhere in lib/
   # (grepped, zero references) and firebase_core's Windows build vendors
   # the Firebase C++ SDK via CMake, which breaks on modern CMake/VS
   # (cmake_minimum_required < 3.5 removed). Re-add only when push
   # notifications are actually implemented, and revisit Windows support
   # for it separately at that point.
-  google_maps_flutter: ^2.10.0
+  # google_maps_flutter removed: unused (map links open the system maps app
+  # through url_launcher) and it needs a Maps API key on Android and iOS.
 
   # Fonts (Cairo/Inter, matching src/index.css)
   google_fonts: ^6.2.1
@@ -84,6 +84,28 @@ dev_dependencies:
   json_serializable: ^6.8.0
   riverpod_generator: ^2.6.3
 
+  # Generate the launcher icons and the native splash screen from
+  # assets/branding (run: dart run flutter_launcher_icons, then
+  # dart run flutter_native_splash:create). Not part of the app itself.
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.6
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/branding/app_icon.png
+  adaptive_icon_background: "#064E3B"
+  adaptive_icon_foreground: assets/branding/app_icon_foreground.png
+  remove_alpha_ios: true
+
+flutter_native_splash:
+  color: "#064E3B"
+  image: assets/branding/splash_logo.png
+  android_12:
+    color: "#064E3B"
+    image: assets/branding/splash_logo.png
+  web: false
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -95,9 +117,13 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # Same hero photo as the website (src/assets/hero.jpg).
+  # Same hero photo as the website (src/assets/hero.jpg). The Cairo font
+  # files are bundled so text renders correctly offline and on first launch
+  # (google_fonts uses bundled files before downloading; SIL OFL, see
+  # assets/google_fonts/OFL.txt).
   assets:
     - assets/images/hero.jpg
+    - assets/google_fonts/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

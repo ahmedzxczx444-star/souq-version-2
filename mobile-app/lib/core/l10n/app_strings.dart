@@ -298,4 +298,7 @@ extension SettingsStrings on AppStrings {
   String get contactUs => isArabic ? 'تواصل معنا' : 'Contact Us';
   String get signInToManage => isArabic ? 'سجّل الدخول لإدارة حسابك' : 'Sign in to manage your account';
   String get genericError => isArabic ? 'حدث خطأ، حاول مرة أخرى' : 'Something went wrong, please try again';
+  String get networkError =>
+      isArabic ? 'تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت وحاول مرة أخرى.' : 'Could not reach the server. Check your internet connection and try again.';
+  String get timeoutError => isArabic ? 'استغرق الخادم وقتًا طويلًا للرد. حاول مرة أخرى.' : 'The server took too long to answer. Please try again.';
 }

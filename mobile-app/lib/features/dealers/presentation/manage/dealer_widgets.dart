@@ -8,7 +8,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/l10n/app_strings.dart';
 import '../../../../core/l10n/dealer_strings.dart';
 import '../../../../core/network/api_endpoints.dart';
-import '../../../../core/network/api_exception.dart';
+
+export '../../../../core/network/error_text.dart' show errorMessage;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/web_layout.dart';
 import '../../data/dealer_account.dart';
@@ -71,8 +72,6 @@ class DealerPage extends StatelessWidget {
   }
 }
 
-String errorMessage(Object error, AppStrings strings) =>
-    error is ApiException ? error.message : strings.genericError;
 
 class LoadingView extends StatelessWidget {
   const LoadingView({super.key});

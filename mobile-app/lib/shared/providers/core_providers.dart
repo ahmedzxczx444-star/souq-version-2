@@ -5,9 +5,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/app_prefs.dart';
 import '../../core/storage/token_storage.dart';
+import '../../features/ai/data/ai_search_repository.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/cars/data/car_repository.dart';
 import '../../features/dealers/data/dealer_repository.dart';
+import '../../features/parts/data/market_repository.dart';
 import 'auth_provider.dart';
 
 /// Overridden in main.dart once SharedPreferences.getInstance() resolves —
@@ -42,4 +44,12 @@ final dealerRepositoryProvider = Provider<DealerRepository>(
 
 final carRepositoryProvider = Provider<CarRepository>(
   (ref) => CarRepository(ref.watch(apiClientProvider)),
+);
+
+final aiSearchRepositoryProvider = Provider<AiSearchRepository>(
+  (ref) => AiSearchRepository(ref.watch(apiClientProvider)),
+);
+
+final marketRepositoryProvider = Provider<MarketRepository>(
+  (ref) => MarketRepository(ref.watch(apiClientProvider)),
 );

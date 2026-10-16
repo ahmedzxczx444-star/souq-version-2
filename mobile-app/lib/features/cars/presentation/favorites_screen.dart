@@ -9,6 +9,7 @@ import '../../../shared/providers/favorites_provider.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/car_card.dart';
 import '../../../shared/widgets/web_layout.dart';
+import '../../dealers/presentation/manage/dealer_widgets.dart' show ErrorView, errorMessage;
 
 final _favoriteCarsProvider = FutureProvider.autoDispose(
   (ref) => ref.watch(carRepositoryProvider).getFavorites(),
@@ -35,7 +36,11 @@ class FavoritesScreen extends ConsumerWidget {
             loading: () => const Center(
               child: CircularProgressIndicator(color: AppColors.emeraldAccent),
             ),
-            error: (e, _) => Center(child: Text('$e')),
+            error: (e, _) => ErrorView(
+              message: errorMessage(e, strings),
+              onRetry: () => ref.invalidate(_favoriteCarsProvider),
+              strings: strings,
+            ),
             data: (cars) {
               if (cars.isEmpty) {
                 return ListView(

@@ -9,6 +9,7 @@ import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/web_layout.dart';
+import '../../../core/network/error_text.dart';
 
 /// Mirrors src/screens/SettingsScreen.tsx (language) and
 /// src/screens/PrivacySecurityScreen.tsx (change password, log out of all
@@ -49,7 +50,7 @@ class SettingsScreen extends ConsumerWidget {
         await ref.read(authProvider.notifier).logout();
         if (context.mounted) context.go('/login');
       } on ApiException catch (e) {
-        if (context.mounted) toast(e.message);
+        if (context.mounted) toast(errorMessage(e, ref.read(stringsProvider)));
       }
     }
 
@@ -229,7 +230,7 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
       await ref.read(authRepositoryProvider).changePassword(currentPassword: _current.text, newPassword: _next.text);
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (mounted) setState(() => _error = errorMessage(e, ref.read(stringsProvider)));
     } catch (_) {
       if (mounted) setState(() => _error = strings.genericError);
     } finally {
@@ -310,7 +311,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
       await ref.read(authRepositoryProvider).deleteAccount(_password.text);
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (mounted) setState(() => _error = errorMessage(e, ref.read(stringsProvider)));
     } catch (_) {
       if (mounted) setState(() => _error = strings.genericError);
     } finally {

@@ -26,6 +26,7 @@ import 'package:mobile_app/shared/providers/core_providers.dart';
 import 'package:mobile_app/shared/providers/favorites_provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mobile_app/features/parts/data/market_repository.dart';
 
 const buyer = User(id: 7, email: 'buyer@example.com', name: 'Buyer', role: 'user');
 
@@ -423,6 +424,7 @@ Future<({ProviderContainer container, GoRouter router})> pumpRealRouter(WidgetTe
     sharedPreferencesProvider.overrideWithValue(prefs),
     authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
     carRepositoryProvider.overrideWithValue(FakeCarRepository(sampleCar())),
+    marketRepositoryProvider.overrideWithValue(EmptyMarketRepository()),
     authProvider.overrideWith(() => FakeAuthNotifier(user)),
   ]);
   addTearDown(container.dispose);
@@ -440,7 +442,50 @@ Future<void> flushTimers(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 10));
 }
 
+class EmptyMarketRepository extends MarketRepository {
+  EmptyMarketRepository() : super(ApiClient(_NoToken()));
+
+  @override
+  Future<PartSearchResult> searchParts(String query) async => const PartSearchResult(parts: [], count: 0, noExactMatch: false);
+
+  @override
+  Future<List<PartOrder>> myOrders() async => const [];
+
+  @override
+  Future<List<AppNotification>> notifications() async => const [];
+}
+
 void realRouterTests() {
+  testWidgets('real router: every buyer screen opens, and signed-in screens need an account', (tester) async {
+    final guest = await pumpRealRouter(tester);
+    for (final path in ['/ai-search', '/parts', '/compare']) {
+      guest.router.go(path);
+      await tester.pump();
+      await tester.pump();
+      expect(guest.router.routerDelegate.currentConfiguration.uri.path, path, reason: '$path is open to guests');
+    }
+    for (final path in ['/notifications', '/my-part-orders']) {
+      guest.router.go(path);
+      await tester.pump();
+      await tester.pump();
+      expect(guest.router.routerDelegate.currentConfiguration.uri.path, '/login', reason: '$path needs an account');
+    }
+    await flushTimers(tester);
+
+    final signedIn = await pumpRealRouter(tester, user: buyer);
+    for (final path in ['/notifications', '/my-part-orders']) {
+      signedIn.router.go(path);
+      await tester.pump();
+      await tester.pump();
+      expect(signedIn.router.routerDelegate.currentConfiguration.uri.path, path);
+    }
+    for (final removed in ['/subscription', '/dealer-categories']) {
+      expect(() => signedIn.router.configuration.findMatch(Uri.parse(removed)).matches, returnsNormally);
+      expect(signedIn.router.configuration.findMatch(Uri.parse(removed)).matches, isEmpty, reason: '$removed placeholder is gone');
+    }
+    await flushTimers(tester);
+  });
+
   testWidgets('real router: guests are sent from favorites to sign-in', (tester) async {
     final app = await pumpRealRouter(tester);
     app.router.go('/favorites');

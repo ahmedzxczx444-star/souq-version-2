@@ -5,6 +5,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/network/image_urls.dart';
 import '../../core/theme/app_colors.dart';
 import '../models/dealer.dart';
+import '../../core/l10n/market_strings.dart';
 
 /// Mirrors src/components/DealerCard.tsx's `image-top` variant — the only
 /// one the site's Home ("Top Dealers" strip) and All Dealers screens use:
@@ -89,9 +90,9 @@ class DealerCardWidget extends StatelessWidget {
                           color: AppColors.emeraldAccent.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
-                          'مصر حصري',
-                          style: TextStyle(fontSize: 7, fontWeight: FontWeight.w700, color: AppColors.emeraldAccent),
+                        child: Text(
+                          strings.egyptExclusive,
+                          style: const TextStyle(fontSize: 7, fontWeight: FontWeight.w700, color: AppColors.emeraldAccent),
                         ),
                       ),
                     ],

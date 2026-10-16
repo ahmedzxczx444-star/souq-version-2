@@ -280,7 +280,7 @@ class _RecordingClient implements ApiClient {
   Future<Response<dynamic>> get(String path, {Map<String, dynamic>? query}) async => _r('GET $path');
 
   @override
-  Future<Response<dynamic>> post(String path, {Object? data}) async => _r('POST $path');
+  Future<Response<dynamic>> post(String path, {Object? data, Duration? timeout}) async => _r('POST $path');
 
   @override
   Future<Response<dynamic>> put(String path, {Object? data}) async => _r('PUT $path');

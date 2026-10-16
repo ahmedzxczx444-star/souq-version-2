@@ -16,6 +16,7 @@ import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/web_layout.dart';
+import '../../../core/l10n/market_strings.dart';
 
 typedef _DealerPage = ({DealerProfile profile, List<DealerReel> reels});
 
@@ -78,7 +79,7 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
       setState(() => _following = followed);
       ref.invalidate(_dealerPageProvider(widget.dealerId));
     } on ApiException {
-      if (mounted) _notify('فشل تحديث المتابعة');
+      if (mounted) _notify(ref.read(stringsProvider).followFailed);
     } finally {
       if (mounted) setState(() => _followLoading = false);
     }
@@ -92,7 +93,7 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
       setState(() => _rating = value);
       ref.invalidate(_dealerPageProvider(widget.dealerId));
     } on ApiException {
-      if (mounted) _notify('فشل إرسال التقييم');
+      if (mounted) _notify(ref.read(stringsProvider).ratingFailed);
     } finally {
       if (mounted) setState(() => _ratingBusy = false);
     }
@@ -198,10 +199,10 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
                                 ),
                                 const Text('•'),
                                 Text(strings.verifiedDealer),
-                                if (branches.isNotEmpty) ...[const Text('•'), Text('${branches.length} فروع')],
+                                if (branches.isNotEmpty) ...[const Text('•'), Text(strings.branchesN(branches.length))],
                                 const Text('•'),
                                 Text(
-                                  '${dealer.followersCount ?? 0} متابع',
+                                  strings.followersN(dealer.followersCount ?? 0),
                                   style: const TextStyle(color: AppColors.emerald500),
                                 ),
                               ],
@@ -243,7 +244,7 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
                               ),
                             )
                           : Text(
-                              _following ? 'إلغاء المتابعة' : 'متابعة المعرض',
+                              _following ? strings.unfollowDealer : strings.followDealer,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -264,9 +265,9 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'قيم هذا المعرض',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gray400),
+                        Text(
+                          strings.rateDealer,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gray400),
                         ),
                         const SizedBox(height: 12),
                         Row(
@@ -314,11 +315,11 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
                   const SizedBox(height: 24),
                 ],
                 if (branches.isNotEmpty) ...[
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text(
-                      'فروعنا',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gray400),
+                      strings.ourBranches,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gray400),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -337,7 +338,7 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
                           border: Border.all(color: AppColors.gray200),
                         ),
                         child: Text(
-                          'عرض جميع الفروع (${branches.length})',
+                          strings.viewAllBranches(branches.length),
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gray400),
                         ),
                       ),
@@ -357,7 +358,7 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
                     color: AppColors.gray100,
                     foreground: AppColors.gray900,
                     icon: Icons.location_on_outlined,
-                    label: '🗺 عرض الموقع على الخريطة',
+                    label: '🗺 ${strings.viewOnMap}',
                     onTap: () => launchUrl(Uri.parse(mapLink), mode: LaunchMode.externalApplication),
                   ),
                 ],
@@ -382,7 +383,7 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
               children: [
                 for (final item in grid)
                   if (item.car != null)
-                    _CarTile(car: item.car!, number: _number, onTap: () => context.push('/car/${item.car!.id}'))
+                    _CarTile(car: item.car!, number: _number, currency: strings.currency, onTap: () => context.push('/car/${item.car!.id}'))
                   else
                     _ReelTile(reel: item.reel!, onTap: () => context.go('/reels')),
               ],
@@ -552,10 +553,11 @@ class _WideButton extends StatelessWidget {
 }
 
 class _CarTile extends StatelessWidget {
-  const _CarTile({required this.car, required this.number, required this.onTap});
+  const _CarTile({required this.car, required this.number, required this.currency, required this.onTap});
 
   final Car car;
   final NumberFormat number;
+  final String currency;
   final VoidCallback onTap;
 
   @override
@@ -600,7 +602,7 @@ class _CarTile extends StatelessWidget {
                   Opacity(
                     opacity: 0.8,
                     child: Text(
-                      '${car.year} • ${number.format(car.price)} ج.م',
+                      '${car.year} • ${number.format(car.price)} $currency',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: AppColors.white),

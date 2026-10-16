@@ -48,11 +48,49 @@ cannot be uploaded to Google Play.
 Building and signing need macOS with Xcode and an Apple Developer team set on
 the Runner target (bundle id `com.souqcars.mobileApp`).
 
+### Building on this Windows machine
+
+The Android SDK and a JDK live in `D:\Android` (`flutter config` already
+points at them). If the project and the pub cache are on different drives,
+keep `kotlin.incremental=false` in `android/gradle.properties`, otherwise the
+Kotlin compiler fails with "this and base files have different roots".
+
+```
+flutter build apk --debug --dart-define=API_BASE_URL=https://souq-elsyrat.com
+flutter build apk --release --dart-define=API_BASE_URL=https://souq-elsyrat.com
+```
+
+Emulator: `D:\Android\Sdk\emulator\emulator.exe -avd souq_api35` (set
+`ANDROID_AVD_HOME=D:\Android\avd` first).
+
+## Branding
+
+Launcher icons and the native splash screen are generated from
+`assets/branding/`:
+
+```
+dart run flutter_launcher_icons
+dart run flutter_native_splash:create
+```
+
+Both tools also rewrite `ios/Runner/Info.plist` and
+`ios/Runner.xcodeproj/project.pbxproj`; review those diffs (the icon tool has
+set an invalid `ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS`
+value before). The Cairo font files in `assets/google_fonts/` are bundled so
+text renders the same offline (SIL Open Font License).
+
 ## Checks
 
 ```
 flutter test --no-pub
 flutter analyze --no-pub
+```
+
+A read-only check of the app's data code against a live backend is skipped
+by default:
+
+```
+flutter test test/live_api_contract_test.dart --dart-define=LIVE_API_CHECK=true --dart-define=API_BASE_URL=https://souq-elsyrat.com
 ```
 
 ## Generated model files

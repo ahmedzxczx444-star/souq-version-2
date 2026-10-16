@@ -15,7 +15,6 @@ import '../../features/cars/presentation/home_screen.dart';
 import '../../features/cars/presentation/reels_screen.dart';
 import '../../features/cars/presentation/search_results_screen.dart';
 import '../../features/dealers/presentation/all_dealers_screen.dart';
-import '../../features/dealers/presentation/dealer_categories_screen.dart';
 import '../../features/dealers/presentation/dealer_dashboard_screen.dart';
 import '../../features/dealers/presentation/dealer_profile_screen.dart';
 import '../../features/dealers/data/dealer_account.dart';
@@ -29,12 +28,13 @@ import '../../shared/models/user.dart';
 import '../../features/ai/presentation/ai_search_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/parts/presentation/add_part_screen.dart';
+import '../../features/parts/presentation/my_part_orders_screen.dart';
+import '../../features/parts/presentation/part_details_screen.dart';
 import '../../features/parts/presentation/parts_marketplace_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/profile/presentation/legal_screens.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/settings_screen.dart';
-import '../../features/subscriptions/presentation/subscription_screen.dart';
 import '../../features/dealers/data/resource_specs.dart';
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/providers/language_provider.dart';
@@ -47,6 +47,8 @@ const _protectedRoutePrefixes = [
   '/favorites',
   '/profile',
   '/edit-profile',
+  '/notifications',
+  '/my-part-orders',
   ..._dealerRoutePrefixes,
 ];
 
@@ -134,6 +136,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/featured-cars', builder: (context, state) => const FeaturedCarsScreen()),
       GoRoute(path: '/ai-search', builder: (context, state) => const AiSearchScreen()),
       GoRoute(path: '/parts', builder: (context, state) => const PartsMarketplaceScreen()),
+      GoRoute(
+        path: '/part/:id',
+        builder: (context, state) => PartDetailsScreen(partId: int.parse(state.pathParameters['id']!)),
+      ),
+      GoRoute(path: '/my-part-orders', builder: (context, state) => const MyPartOrdersScreen()),
       GoRoute(path: '/compare', builder: (context, state) => const CompareCarsScreen()),
       GoRoute(path: '/notifications', builder: (context, state) => const NotificationsScreen()),
       GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
@@ -186,8 +193,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/edit-profile', builder: (context, state) => const EditProfileScreen()),
       GoRoute(path: '/dealer-dashboard', builder: (context, state) => const DealerDashboardScreen()),
-      GoRoute(path: '/dealer-categories', builder: (context, state) => const DealerCategoriesScreen()),
-      GoRoute(path: '/subscription', builder: (context, state) => const SubscriptionScreen()),
     ],
   );
 });
