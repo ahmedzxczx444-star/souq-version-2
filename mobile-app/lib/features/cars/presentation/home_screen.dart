@@ -314,72 +314,74 @@ class _HeroContent extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 48),
-          Row(
+          // The content column is at most 448 px wide (kWebColumnWidth), too narrow
+          // for the search pill and the Smart AI button side by side: the text
+          // field was squeezed to a few pixels. The button gets its own row.
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.95),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                    boxShadow: const [BoxShadow(color: Color(0x4D000000), blurRadius: 50, offset: Offset(0, 20))],
-                  ),
-                  child: Row(
-                    children: [
-                      Material(
-                        color: AppColors.emeraldDeep,
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                  boxShadow: const [BoxShadow(color: Color(0x4D000000), blurRadius: 50, offset: Offset(0, 20))],
+                ),
+                child: Row(
+                  children: [
+                    Material(
+                      color: AppColors.emeraldDeep,
+                      borderRadius: BorderRadius.circular(999),
+                      elevation: 4,
+                      child: InkWell(
                         borderRadius: BorderRadius.circular(999),
-                        elevation: 4,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(999),
-                          hoverColor: AppColors.emeraldHover,
-                          onTap: onSearch,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                            child: Text(
-                              strings.search,
-                              style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.w700, fontSize: 14, height: 1.43),
-                            ),
+                        hoverColor: AppColors.emeraldHover,
+                        onTap: onSearch,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                          child: Text(
+                            strings.search,
+                            style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.w700, fontSize: 14, height: 1.43),
                           ),
                         ),
                       ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: controller,
-                                  onSubmitted: (_) => onSearch(),
-                                  textInputAction: TextInputAction.search,
-                                  // `text-right` regardless of language.
-                                  textAlign: TextAlign.right,
-                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.gray900),
-                                  decoration: InputDecoration(
-                                    hintText: strings.searchPlaceholder,
-                                    hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.gray400),
-                                    border: InputBorder.none,
-                                    enabledBorder: InputBorder.none,
-                                    focusedBorder: InputBorder.none,
-                                    filled: false,
-                                    isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                                  ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: controller,
+                                onSubmitted: (_) => onSearch(),
+                                textInputAction: TextInputAction.search,
+                                // `text-right` regardless of language.
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.gray900),
+                                decoration: InputDecoration(
+                                  hintText: strings.searchPlaceholder,
+                                  hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.gray400),
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  filled: false,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              const Icon(Icons.search, size: 20, color: AppColors.gray400),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Icon(Icons.search, size: 20, color: AppColors.gray400),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(height: 12),
               GestureDetector(
                 onTap: onSmartAi,
                 child: Container(
@@ -399,6 +401,7 @@ class _HeroContent extends StatelessWidget {
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.auto_awesome_outlined, size: 20, color: AppColors.white),
                       SizedBox(width: 8),
