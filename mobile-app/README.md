@@ -31,17 +31,47 @@ flutter build ipa --release --dart-define=API_BASE_URL=https://<production API>
 
 ### Android signing
 
-Create an upload keystore and `android/key.properties` (both are git-ignored):
+Release builds are signed with the Google Play **upload key**. Create it once,
+on the machine that builds releases:
 
 ```
+powershell -ExecutionPolicy Bypass -File mobile-app\android\tools\create-upload-keystore.ps1
+```
+
+The script asks for a password (it is never shown or put on a command line),
+creates `%USERPROFILE%\souq-keys\souq-upload.jks` outside the repository,
+writes the git-ignored `android/key.properties`, and refuses to overwrite an
+existing keystore or properties file. `key.properties` holds the password in
+plain text, as Flutter's Gradle setup expects, so keep that file on the build
+machine only. To keep it outside the repository instead, point the
+`SOUQ_KEY_PROPERTIES` environment variable at it:
+
+```
+storeFile=C:/Users/<you>/souq-keys/souq-upload.jks
 storePassword=<password>
-keyPassword=<password>
 keyAlias=upload
-storeFile=<absolute path to the .jks file>
+keyPassword=<password>
 ```
 
-Without `key.properties` the release build is signed with the debug key and
-cannot be uploaded to Google Play.
+Without complete signing details a release build **fails** and lists what is
+missing; it no longer falls back to the debug key. For a local test build only,
+`SOUQ_ALLOW_DEBUG_SIGNED_RELEASE=true` signs a release with the debug key
+(Gradle logs a warning; Flutter's normal output hides it). Google Play rejects
+such builds. Debug builds are not affected.
+
+Check which key signed an APK:
+
+```
+D:\Android\Sdk\build-tools\36.0.0\apksigner.bat verify --print-certs build\app\outputs\flutter-apk\app-release.apk
+```
+
+**Back up the upload key.** Store the `.jks` file and its password together in
+a password manager, plus an offline copy (for example an encrypted USB drive),
+never in Git, chat or email. When you create the app in Google Play Console,
+keep **Play App Signing** on (the default): Google then holds the key that
+signs what users install, and a lost upload key can be replaced through Play
+Console support instead of losing the app. Without Play App Signing, a lost
+key means no further updates to the same listing.
 
 ### iOS
 
