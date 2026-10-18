@@ -2,10 +2,17 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Release builds talk to the production API over https only. Plain http:// (a local
          dev backend) is allowed for debug and profile builds in their own manifests. -->
+    <!-- No Android backup or device-to-device transfer of app data: the session
+         token lives in flutter_secure_storage, whose Keystore keys never leave
+         the device, so a restored copy would be unreadable. Language and
+         onboarding preferences simply start fresh on a new phone. -->
     <application
         android:label="Souq Cars"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name=".MainActivity"
             android:exported="true"
