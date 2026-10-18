@@ -1,62 +1,68 @@
 import React from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Languages } from "lucide-react";
+import type { Language } from "../constants/translations";
+import { PRIVACY_POLICY_UPDATED, privacyPolicy } from "../constants/privacyPolicy";
 
 interface PrivacyScreenProps {
   onBack: () => void;
+  lang: Language;
+  toggleLanguage: () => void;
+  onDeleteAccount: () => void;
 }
 
-export const PrivacyScreen: React.FC<PrivacyScreenProps> = ({ onBack }) => {
+/** Public privacy policy (also reachable directly at /privacy). */
+export const PrivacyScreen: React.FC<PrivacyScreenProps> = ({ onBack, lang, toggleLanguage, onDeleteAccount }) => {
+  const policy = privacyPolicy[lang];
+  const isAr = lang === "ar";
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white" dir={isAr ? "rtl" : "ltr"}>
       <header className="px-6 pt-12 pb-6 flex items-center gap-4 border-b border-gray-50 sticky top-0 bg-white z-10">
-        <button onClick={onBack} className="p-2 hover:bg-gray-50 rounded-xl transition-colors">
+        <button onClick={onBack} aria-label={isAr ? "رجوع" : "Back"} className="p-2 hover:bg-gray-50 rounded-xl transition-colors">
           <ChevronLeft size={24} className="rtl:rotate-180" />
         </button>
-        <h1 className="text-xl font-black text-gray-900 tracking-tight">سياسة الخصوصية</h1>
+        <h1 className="text-xl font-black text-gray-900 tracking-tight flex-1">{policy.title}</h1>
+        <button
+          onClick={toggleLanguage}
+          className="flex items-center gap-1 px-3 py-2 rounded-xl bg-gray-50 text-xs font-bold text-gray-700 hover:bg-gray-100"
+        >
+          <Languages size={16} />
+          {isAr ? "English" : "العربية"}
+        </button>
       </header>
 
-      <div className="p-6 space-y-8 text-right" dir="rtl">
-        <section className="space-y-4">
-          <h2 className="text-lg font-bold text-gray-900">1. البيانات التي نجمعها</h2>
-          <p className="text-gray-600 leading-relaxed">
-            نقوم بجمع بعض البيانات الأساسية لتقديم خدماتنا، وتشمل: البريد الإلكتروني، رقم الهاتف، ومعلومات الحساب التي تزودنا بها عند التسجيل.
+      <div className="p-6 space-y-8 max-w-2xl mx-auto">
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-gray-400">
+            {policy.updated}: {PRIVACY_POLICY_UPDATED}
           </p>
-        </section>
+          <p className="text-gray-600 leading-relaxed">{policy.intro}</p>
+        </div>
 
-        <section className="space-y-4">
-          <h2 className="text-lg font-bold text-gray-900">2. لماذا نجمع هذه البيانات؟</h2>
-          <p className="text-gray-600 leading-relaxed">
-            نستخدم هذه البيانات لإنشاء حسابك، وتحسين تجربة المستخدم، والتواصل معك بخصوص إعلاناتك أو استفساراتك، ولضمان أمان المنصة.
-          </p>
-        </section>
+        {policy.sections.map((section) => (
+          <section key={section.title} className="space-y-3">
+            <h2 className="text-lg font-bold text-gray-900">{section.title}</h2>
+            {section.paragraphs?.map((p) => (
+              <p key={p} className="text-gray-600 leading-relaxed">{p}</p>
+            ))}
+            {section.bullets && (
+              <ul className="list-disc ps-5 space-y-2 text-gray-600 leading-relaxed">
+                {section.bullets.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            )}
+            {section.notes?.map((p) => (
+              <p key={p} className="text-gray-600 leading-relaxed">{p}</p>
+            ))}
+          </section>
+        ))}
 
-        <section className="space-y-4">
-          <h2 className="text-lg font-bold text-gray-900">3. حماية البيانات</h2>
-          <p className="text-gray-600 leading-relaxed">
-            نحن ملتزمون بحماية بياناتك الشخصية واستخدام تقنيات أمان متقدمة لمنع الوصول غير المصرح به أو تسريب المعلومات.
-          </p>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-lg font-bold text-gray-900">4. مشاركة البيانات</h2>
-          <p className="text-gray-600 leading-relaxed">
-            نحن نلتزم بعدم بيع أو تأجير بياناتك الشخصية لأي طرف ثالث لأغراض تسويقية. يتم استخدام البيانات فقط داخل إطار المنصة ولتحسين خدماتنا.
-          </p>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-lg font-bold text-gray-900">5. ملفات تعريف الارتباط (Cookies)</h2>
-          <p className="text-gray-600 leading-relaxed">
-            نستخدم ملفات تعريف الارتباط لتحسين تجربة التصفح، وتذكر تفضيلاتك، وتحليل كيفية استخدام المنصة لتطويرها باستمرار.
-          </p>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-lg font-bold text-gray-900">6. حقوق المستخدم</h2>
-          <p className="text-gray-600 leading-relaxed">
-            لديك الحق الكامل في تحديث بياناتك الشخصية أو طلب حذف حسابك وبياناتك من أنظمتنا في أي وقت من خلال إعدادات الحساب أو التواصل معنا.
-          </p>
-        </section>
+        <button
+          onClick={onDeleteAccount}
+          className="w-full py-4 rounded-2xl border border-red-100 bg-red-50 text-red-600 font-bold hover:bg-red-100 transition-colors"
+        >
+          {isAr ? "طلب حذف الحساب" : "Request account deletion"}
+        </button>
       </div>
     </div>
   );

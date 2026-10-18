@@ -52,7 +52,17 @@ export const TermsScreen: React.FC<TermsScreenProps> = ({ onBack }) => {
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-lg font-bold text-gray-900">6. إخلاء المسؤولية</h2>
+          <h2 className="text-lg font-bold text-gray-900">6. المحتوى المحظور والإبلاغ</h2>
+          <p className="text-gray-600 leading-relaxed">
+            يُمنع نشر أي محتوى احتيالي أو مضلل أو مسيء أو يحض على الكراهية أو العنف، أو محتوى جنسي، أو محتوى ينتهك حقوق الغير أو القانون، كما يُمنع انتحال الشخصية أو الإزعاج المتكرر. يمكن لأي مستخدم الإبلاغ عن سيارة أو قطعة غيار أو فيديو أو معرض أو مستخدم من داخل التطبيق، وحظر أي معرض لإخفاء محتواه. يراجع المشرفون البلاغات ويحق لهم إخفاء المحتوى المخالف أو حذفه وإيقاف الحساب المخالف أو حظره.
+          </p>
+          <p className="text-gray-600 leading-relaxed" dir="ltr">
+            Fraudulent, misleading, abusive, hateful, violent, sexual or illegal content, impersonation and spam are not allowed. Anyone can report a car, part, video, dealer or user from the app and block a dealer to hide its content. Moderators review reports and may hide or remove content and suspend or ban accounts that break these rules.
+          </p>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="text-lg font-bold text-gray-900">7. إخلاء المسؤولية</h2>
           <p className="text-gray-600 leading-relaxed">
             المنصة غير مسؤولة عن أي معاملات أو اتفاقيات تتم بين البائع والمشتري. ننصح دائماً بفحص السيارة جيداً والتأكد من الأوراق القانونية قبل إتمام أي عملية شراء.
           </p>

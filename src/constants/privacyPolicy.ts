@@ -1,0 +1,218 @@
+// Privacy policy text for the website (/privacy). It describes what the code
+// actually does (server.ts, routes/, services/accountDeletion.ts, the mobile
+// app); change it together with that behaviour. The mobile app shows the same
+// text in mobile-app/lib/features/profile/presentation/legal_screens.dart.
+import type { Language } from "./translations";
+
+export interface PolicySection {
+  title: string;
+  /** Shown before the bullets. */
+  paragraphs?: string[];
+  bullets?: string[];
+  /** Shown after the bullets. */
+  notes?: string[];
+}
+
+export const PRIVACY_POLICY_UPDATED = "2026-10-17";
+export const SUPPORT_EMAIL = "Souqcars33@gmail.com";
+
+export const privacyPolicy: Record<Language, { title: string; updated: string; intro: string; sections: PolicySection[] }> = {
+  ar: {
+    title: "سياسة الخصوصية",
+    updated: "آخر تحديث",
+    intro:
+      "توضح هذه السياسة البيانات التي يجمعها سوق السيارات (الموقع souq-elsyrat.com وتطبيق Souq Cars على أندرويد) وكيف نستخدمها ونحميها، وكيف يمكنك حذف حسابك.",
+    sections: [
+      {
+        title: "1. البيانات التي نجمعها",
+        bullets: [
+          "بيانات الحساب: الاسم والبريد الإلكتروني وكلمة المرور (تُحفظ مشفرة ولا يمكن قراءتها).",
+          "بيانات التجار: رقم الهاتف ورقم واتساب وعنوان المعرض والشعار والوصف ونوع النشاط، والموقع على الخريطة إذا أضفته. هذه البيانات تظهر للعامة حتى يتواصل معك المشترون.",
+          "المحتوى الذي ينشره التجار: السيارات وقطع الغيار والصور والفيديوهات والأوصاف، ويظهر للعامة.",
+          "نشاطك: المفضلة والمتابعات والتقييمات والإعجابات والإشعارات، وطلبات قطع الغيار (طريقة الاستلام وعنوان التوصيل والملاحظات إن أدخلتها)، والبلاغات التي ترسلها والحسابات التي تحظرها.",
+          "رسائل البحث الذكي التي تكتبها.",
+          "عنوان IP عند طلب رمز تحقق، لمنع إساءة الاستخدام.",
+        ],
+        notes: [
+          "لا يطلب التطبيق موقعك الجغرافي ولا يصل إلى جهات الاتصال أو الكاميرا، ولا يرفع إلا الصور والفيديوهات التي تختارها بنفسك. لا توجد إعلانات أو أدوات تتبع إعلانية أو تحليلات من طرف ثالث.",
+          "يحفظ الموقع جلسة الدخول ولغة العرض في المتصفح (التخزين المحلي). تستخدم نماذج الدخول والتسجيل في الموقع خدمة Google reCAPTCHA للتحقق من أنك لست برنامجًا آليًا، وقد تضع Google ملفات تعريف ارتباط خاصة بها.",
+        ],
+      },
+      {
+        title: "2. كيف نستخدم البيانات",
+        bullets: [
+          "إنشاء حسابك والتحقق من بريدك الإلكتروني.",
+          "عرض الإعلانات وتشغيل البحث والمفضلة والمتابعة وطلبات قطع الغيار والإشعارات.",
+          "مراجعة البلاغات وحماية المستخدمين من المحتوى المسيء والاحتيال.",
+          "منع إساءة الاستخدام والتواصل معك بخصوص حسابك.",
+        ],
+      },
+      {
+        title: "3. من يرى بياناتك",
+        bullets: [
+          "ملف المعرض وإعلاناته وفيديوهاته تظهر لأي زائر.",
+          "عند إرسال طلب قطعة غيار أو حجز مسبق، يرى التاجر اسمك وبريدك الإلكتروني وتفاصيل الطلب التي أدخلتها.",
+          "لا يرى الشخص الذي تبلغ عنه هويتك.",
+        ],
+      },
+      {
+        title: "4. مقدمو الخدمات",
+        paragraphs: ["نستعين بجهات تعالج البيانات نيابة عنا فقط، ولا نبيع بياناتك ولا نؤجرها لأي طرف:"],
+        bullets: [
+          "Google (Gemini): لفهم رسائل البحث الذكي.",
+          "Google reCAPTCHA: للتحقق في نماذج الدخول والتسجيل على الموقع.",
+          "Brevo: لإرسال رسائل رموز التحقق إلى بريدك.",
+          "Railway: لاستضافة الخادم وقاعدة البيانات.",
+        ],
+      },
+      {
+        title: "5. التواصل خارج المنصة",
+        paragraphs: [
+          "عند الضغط على اتصال أو واتساب ينتقل التواصل إلى تطبيق الهاتف أو واتساب ويخضع لسياساتهما. لا توجد محادثات داخل سوق السيارات.",
+        ],
+      },
+      {
+        title: "6. البلاغات والحظر",
+        paragraphs: [
+          "يمكنك الإبلاغ عن أي سيارة أو قطعة غيار أو فيديو أو معرض أو مستخدم من داخل التطبيق. يراجع المشرفون البلاغات، وقد يُخفى المحتوى المخالف أو يُحذف ويُوقف الحساب المخالف. يمكنك أيضًا حظر أي معرض فيختفي محتواه من التطبيق لديك، ويمكنك إلغاء الحظر من الإعدادات.",
+        ],
+      },
+      {
+        title: "7. مدة الاحتفاظ بالبيانات",
+        bullets: [
+          "نحتفظ ببيانات حسابك ومحتواك ما دام الحساب قائمًا.",
+          "تُحذف رموز التحقق خلال دقائق من انتهاء صلاحيتها (10 دقائق).",
+          "يُحفظ سجل رسائل التحقق (البريد وعنوان IP) لمدة 30 يومًا ثم يُحذف.",
+          "قد تظهر الطلبات ورسائل البحث الذكي في سجلات الخادم لدى مزود الاستضافة.",
+        ],
+      },
+      {
+        title: "8. حذف الحساب",
+        paragraphs: [
+          "يمكنك حذف حسابك من التطبيق (الإعدادات ← حذف الحساب) أو من صفحة حذف الحساب على الموقع souq-elsyrat.com/delete-account. عند الحذف:",
+        ],
+        bullets: [
+          "نحذف المفضلة والمتابعات والتقييمات والإعجابات والإشعارات والحسابات المحظورة ورموز التحقق، ونزيل اسمك وبريدك وكلمة المرور فلا يمكن الدخول بالحساب مرة أخرى.",
+          "نحذف عنوان التوصيل والملاحظات من طلبات قطع الغيار، والملاحظات من طلبات الحجز المسبق.",
+          "لحسابات التجار: نزيل بيانات المعرض، ونخفي السيارات ونحذف صورها، ونحذف الفيديوهات وملفاتها، ونسحب قطع الغيار ونحذف صورها، ونحذف الفروع والموظفين ومراكز الخدمة والعروض والضمانات والمخازن والشحنات والمتابعين والتقييمات.",
+          "نحتفظ بسجلات الطلبات والحجوزات لأنها تخص الطرف الآخر (يظهر الطرف المحذوف باسم «مستخدم محذوف»)، وبالبلاغات لأغراض الإشراف، وبسجل النشاط بعد حذف تفاصيله.",
+        ],
+      },
+      {
+        title: "9. الأمان",
+        paragraphs: [
+          "تنتقل البيانات عبر اتصال مشفر (HTTPS) وتُحفظ كلمات المرور مشفرة. يحفظ التطبيق جلسة الدخول في التخزين الآمن للهاتف، ولا تُنسخ بيانات التطبيق احتياطيًا إلى أجهزة أخرى.",
+        ],
+      },
+      {
+        title: "10. الأطفال",
+        paragraphs: ["سوق السيارات غير موجه للأطفال دون 18 عامًا."],
+      },
+      {
+        title: "11. حقوقك والتواصل",
+        paragraphs: [
+          `يمكنك تعديل بياناتك من الملف الشخصي وحذف حسابك في أي وقت. لأي سؤال عن خصوصيتك راسلنا على ${SUPPORT_EMAIL}. سننشر أي تعديل على هذه السياسة في هذه الصفحة مع تاريخ آخر تحديث.`,
+        ],
+      },
+    ],
+  },
+  en: {
+    title: "Privacy Policy",
+    updated: "Last updated",
+    intro:
+      "This policy explains what data Souq Cars (the website souq-elsyrat.com and the Souq Cars Android app) collects, how we use and protect it, and how you can delete your account.",
+    sections: [
+      {
+        title: "1. Data we collect",
+        bullets: [
+          "Account data: name, email address and password (stored hashed; it cannot be read).",
+          "Dealer data: phone and WhatsApp numbers, showroom address, logo, description and business type, plus a map location if you add one. These are public so buyers can contact you.",
+          "Content dealers publish: cars, spare parts, photos, videos and descriptions, shown publicly.",
+          "Your activity: favourites, follows, ratings, likes and notifications; spare-part order requests (pick-up or delivery, delivery address and notes if you enter them); reports you send and accounts you block.",
+          "Messages you type into Smart Car Search.",
+          "Your IP address when you request a verification code, to prevent abuse.",
+        ],
+        notes: [
+          "The app does not request your location or access your contacts or camera, and it only uploads photos and videos you pick yourself. There are no ads, advertising trackers or third-party analytics.",
+          "The website keeps your sign-in session and language choice in your browser (local storage). Its sign-in and registration forms use Google reCAPTCHA to check that you are not a bot; Google may set its own cookies.",
+        ],
+      },
+      {
+        title: "2. How we use it",
+        bullets: [
+          "To create your account and verify your email address.",
+          "To show listings and run search, favourites, follows, spare-part orders and notifications.",
+          "To review reports and protect users from abusive content and fraud.",
+          "To prevent abuse and contact you about your account.",
+        ],
+      },
+      {
+        title: "3. Who can see your data",
+        bullets: [
+          "A dealer's profile, listings and videos are visible to anyone.",
+          "When you send a spare-part order or pre-order, the dealer sees your name, email and the order details you entered.",
+          "The person you report never sees who reported them.",
+        ],
+      },
+      {
+        title: "4. Service providers",
+        paragraphs: ["These companies process data only on our behalf. We do not sell or rent your data to anyone:"],
+        bullets: [
+          "Google (Gemini): to understand Smart Car Search messages.",
+          "Google reCAPTCHA: bot checks on the website's sign-in and registration forms.",
+          "Brevo: to send verification-code emails.",
+          "Railway: to host the server and database.",
+        ],
+      },
+      {
+        title: "5. Contact outside Souq Cars",
+        paragraphs: [
+          "When you tap Call or WhatsApp, the conversation continues in your phone app or WhatsApp under their policies. Souq Cars has no in-app chat.",
+        ],
+      },
+      {
+        title: "6. Reports and blocking",
+        paragraphs: [
+          "You can report any car, spare part, video, dealer or user from the app. Moderators review reports and may hide or remove content and suspend accounts that break the rules. You can also block a dealer so its content disappears from your app, and unblock it in Settings.",
+        ],
+      },
+      {
+        title: "7. How long we keep data",
+        bullets: [
+          "Account data and content are kept while the account exists.",
+          "Verification codes are deleted within minutes of expiring (they expire after 10 minutes).",
+          "The verification-email log (email and IP address) is kept for 30 days, then deleted.",
+          "Requests and Smart Car Search messages may appear in the server logs at our hosting provider.",
+        ],
+      },
+      {
+        title: "8. Deleting your account",
+        paragraphs: [
+          "Delete your account in the app (Settings → Delete account) or on the website at souq-elsyrat.com/delete-account. Deletion:",
+        ],
+        bullets: [
+          "removes your favourites, follows, ratings, likes, notifications, blocked accounts and verification codes, and erases your name, email and password so the account can never sign in again;",
+          "removes the delivery address and notes from your spare-part orders and the notes from your pre-orders;",
+          "for dealers, also removes the showroom details, hides the cars and deletes their photos, deletes videos and their files, withdraws spare parts and deletes their photos, and deletes branches, employees, service centres, offers, warranties, warehouses, shipments, followers and ratings;",
+          "keeps order and pre-order records because they belong to the other party too (the deleted side shows as \"Deleted user\"), reports for moderation records, and activity-log entries with their details erased.",
+        ],
+      },
+      {
+        title: "9. Security",
+        paragraphs: [
+          "Data travels over encrypted connections (HTTPS) and passwords are stored hashed. The app keeps your sign-in session in the phone's secure storage and does not back up app data to other devices.",
+        ],
+      },
+      {
+        title: "10. Children",
+        paragraphs: ["Souq Cars is not intended for children under 18."],
+      },
+      {
+        title: "11. Your choices and contact",
+        paragraphs: [
+          `You can edit your details in your profile and delete your account at any time. For any privacy question, email ${SUPPORT_EMAIL}. Any change to this policy will be posted on this page with its date.`,
+        ],
+      },
+    ],
+  },
+};

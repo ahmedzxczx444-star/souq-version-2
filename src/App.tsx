@@ -35,15 +35,16 @@ import { api } from "./services/api";
 import { AnimatePresence, motion } from "motion/react";
 import { Language, translations } from "./constants/translations";
 import { Languages } from "lucide-react";
+import { DeleteAccountScreen } from "./screens/DeleteAccountScreen";
 
-type Screen = "home" | "reels" | "favorites" | "profile" | "details" | "dealer" | "add-car" | "add-reel" | "dealer-dashboard" | "smart-ai" | "admin" | "notifications" | "privacy-security" | "settings" | "terms" | "privacy" | "contact" | "featured-cars" | "all-dealers" | "subscription-plans" | "search-results" | "multi-branch-dashboard" | "chain-dashboard" | "importer-dashboard" | "official-agent-dashboard" | "parts-dashboard" | "add-part" | "part-details" | "unified-search"; // UPDATED
+type Screen = "home" | "reels" | "favorites" | "profile" | "details" | "dealer" | "add-car" | "add-reel" | "dealer-dashboard" | "smart-ai" | "admin" | "notifications" | "privacy-security" | "settings" | "terms" | "privacy" | "contact" | "featured-cars" | "all-dealers" | "subscription-plans" | "search-results" | "multi-branch-dashboard" | "chain-dashboard" | "importer-dashboard" | "official-agent-dashboard" | "parts-dashboard" | "add-part" | "part-details" | "unified-search" | "delete-account"; // UPDATED
 
 // Screens that render their own full-page chrome (own header/back button) and should
 // not show the bottom tab bar. Kept as a Set (rather than an inline &&-chain) so new
 // screens can be added without risking a mis-edit of the existing chain.
 const NO_BOTTOM_NAV_SCREENS = new Set<Screen>([
   "details", "dealer", "add-car", "add-reel", "smart-ai", "admin", "notifications",
-  "privacy-security", "settings", "terms", "privacy", "contact", "featured-cars",
+  "privacy-security", "settings", "terms", "privacy", "contact", "delete-account", "featured-cars",
   "all-dealers", "search-results",
   "multi-branch-dashboard", "chain-dashboard", "importer-dashboard", "official-agent-dashboard",
   "parts-dashboard", "add-part", "part-details", "unified-search",
@@ -90,6 +91,19 @@ export default function App() {
         setActiveTab("details");
       }
     }
+
+    // Public pages that Google Play and other sites link to directly.
+    const publicPages: Record<string, Screen> = {
+      "/privacy": "privacy",
+      "/privacy-policy": "privacy",
+      "/terms": "terms",
+      "/contact": "contact",
+      "/delete-account": "delete-account",
+    };
+    const publicPage = publicPages[path.replace(/\/+$/, "") || "/"];
+    if (publicPage) setActiveTab(publicPage);
+    const langParam = new URLSearchParams(window.location.search).get("lang");
+    if (langParam === "ar" || langParam === "en") setLang(langParam);
 
     if (path === "/search" || path === "/search-results") {
       const urlParams = new URLSearchParams(window.location.search);
@@ -325,7 +339,34 @@ export default function App() {
       case "terms":
         return <TermsScreen onBack={() => setActiveTab("home")} />;
       case "privacy":
-        return <PrivacyScreen onBack={() => setActiveTab("home")} />;
+        return (
+          <PrivacyScreen
+            onBack={() => setActiveTab("home")}
+            lang={lang}
+            toggleLanguage={toggleLanguage}
+            onDeleteAccount={() => setActiveTab("delete-account")}
+          />
+        );
+      case "delete-account":
+        return (
+          <DeleteAccountScreen
+            onBack={() => setActiveTab("home")}
+            onOpenPrivacy={() => setActiveTab("privacy")}
+            onForgotPassword={() => setActiveTab("profile")}
+            onDeleted={(email) => {
+              // The deleted account must not stay signed in here; another
+              // signed-in account is left alone.
+              if (user && user.email?.toLowerCase() === email.toLowerCase()) {
+                localStorage.removeItem("user");
+                localStorage.removeItem("token");
+                setUser(null);
+                setFavorites([]);
+              }
+            }}
+            lang={lang}
+            toggleLanguage={toggleLanguage}
+          />
+        );
       case "contact":
         return <ContactScreen onBack={() => setActiveTab("home")} />;
       case "featured-cars":

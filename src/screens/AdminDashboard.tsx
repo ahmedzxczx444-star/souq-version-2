@@ -17,8 +17,10 @@ import {
   XCircle,
   Search,
   ChevronRight,
-  Loader2
+  Loader2,
+  Flag
 } from "lucide-react";
+import { AdminReportsPanel } from "./AdminReportsPanel";
 import { motion, AnimatePresence } from "motion/react";
 
 interface AdminDashboardProps {
@@ -27,7 +29,7 @@ interface AdminDashboardProps {
   t: any;
 }
 
-type AdminSection = 'dashboard' | 'cars' | 'dealers' | 'users' | 'activity' | 'requests';
+type AdminSection = 'dashboard' | 'cars' | 'dealers' | 'users' | 'activity' | 'requests' | 'reports';
 
 const ACTION_LABELS: Record<string, string> = {
   "Failed login attempt": "محاولة تسجيل دخول فاشلة",
@@ -182,6 +184,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     { id: 'cars', label: 'السيارات', icon: CarIcon },
     { id: 'dealers', label: 'المعارض', icon: Store },
     { id: 'requests', label: 'طلبات المعارض', icon: ShieldAlert },
+    { id: 'reports', label: 'البلاغات', icon: Flag },
     { id: 'users', label: 'المستخدمين', icon: Users },
     { id: 'activity', label: 'سجل النشاط', icon: History },
   ];
@@ -191,6 +194,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     cars: 'السيارات',
     dealers: 'المعارض',
     requests: 'طلبات المعارض',
+    reports: 'البلاغات',
     users: 'المستخدمين',
     activity: 'سجل النشاط',
   };
@@ -519,6 +523,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                   </table>
                 </div>
               )}
+
+              {activeSection === 'reports' && <AdminReportsPanel />}
 
               {activeSection === 'activity' && (
                 <div className="space-y-4">

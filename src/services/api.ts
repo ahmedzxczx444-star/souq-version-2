@@ -11,6 +11,17 @@ const getHeaders = () => {
 };
 
 export const api = {
+  account: {
+    // Public web deletion request: the account's email and password prove ownership.
+    requestDeletion: async (email: string, password: string): Promise<{ success?: boolean; error?: string }> => {
+      const res = await fetch(`${API_BASE}/account/delete-request`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+      try {
+        return await res.json();
+      } catch {
+        return { error: res.status === 429 ? "Too many requests" : "Request failed" };
+      }
+    },
+  },
   cars: {
     getAll: async (): Promise<Car[]> => {
       const res = await fetch(`${API_BASE}/cars`);
@@ -365,6 +376,17 @@ export const api = {
     },
     deleteUser: async (id: number): Promise<any> => {
       const res = await fetch(`${API_BASE}/admin/users/${id}`, { method: "DELETE", headers: getHeaders() });
+      return res.json();
+    },
+    getReports: async (status?: string): Promise<any[]> => {
+      const url = status ? `${API_BASE}/admin/reports?status=${status}` : `${API_BASE}/admin/reports`;
+      const res = await fetch(url, { headers: getHeaders() });
+      if (!res.ok) throw new Error("Access Denied");
+      return res.json();
+    },
+    // action: none | hide_content | suspend_dealer | ban_user
+    resolveReport: async (id: number, status: "actioned" | "dismissed", action = "none", note = ""): Promise<{ success?: boolean; error?: string }> => {
+      const res = await fetch(`${API_BASE}/admin/reports/${id}`, { method: "PUT", headers: getHeaders(), body: JSON.stringify({ status, action, note }) });
       return res.json();
     },
     getActivity: async (): Promise<any[]> => {
