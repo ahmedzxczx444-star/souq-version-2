@@ -114,7 +114,7 @@ describe("account deletion", () => {
     assert.equal(withDb(server, (db) => (db.prepare("SELECT COUNT(*) c FROM users WHERE email = ?").get(buyer.email) as any).c), 0);
 
     // The address can be used for a brand-new registration.
-    const again = await api(server, "POST", "/api/auth/register", { body: { email: buyer.email, password: "password1", name: "New", role: "user" } });
+    const again = await api(server, "POST", "/api/auth/register", { body: { accept_terms: true, email: buyer.email, password: "password1", name: "New", role: "user" } });
     assert.equal(again.status, 200);
   });
 

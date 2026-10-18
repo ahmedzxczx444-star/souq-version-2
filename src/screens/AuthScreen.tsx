@@ -45,6 +45,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, t }) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState("user");
+  // Unchecked by default; only a deliberate tick counts as acceptance.
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // Dealer categorization (only surfaced in the UI behind the feature flags; the
   // register API defaults to business_type='car_dealer', dealer_category='single'
@@ -219,6 +221,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, t }) => {
           setLoading(false);
           return;
         }
+        if (!acceptedTerms) {
+          setError(t.termsRequired);
+          setLoading(false);
+          return;
+        }
       }
 
       if (isLogin) {
@@ -244,6 +251,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, t }) => {
           longitude: parseFloat(longitude),
           logo,
           captchaToken,
+          accept_terms: acceptedTerms,
           ...(role === "dealer" && dealerCategorizationEnabled
             ? { business_type: businessType, dealer_category: businessType === "car_dealer" ? dealerCategory : undefined }
             : {}),
@@ -639,6 +647,29 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, t }) => {
               </motion.div>
             )}
           </>
+        )}
+
+        {!isLogin && !isForgotPassword && (
+          <label className="flex items-start gap-3 px-2 text-sm text-gray-700 leading-relaxed">
+            <input
+              type="checkbox"
+              name="accept_terms"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              aria-label={`${t.termsAgreePrefix} ${t.termsOfUseLink} ${t.termsAnd} ${t.privacyPolicyLink}`}
+              className="mt-1 h-4 w-4 shrink-0 accent-black"
+            />
+            <span>
+              {t.termsAgreePrefix}{" "}
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-bold underline hover:text-black">
+                {t.termsOfUseLink}
+              </a>{" "}
+              {t.termsAnd}{" "}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-bold underline hover:text-black">
+                {t.privacyPolicyLink}
+              </a>
+            </span>
+          </label>
         )}
 
         {error && <p className="text-red-500 text-xs font-bold px-2">{error}</p>}

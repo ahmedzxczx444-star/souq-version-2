@@ -27,6 +27,7 @@ import { createPartsRouter } from "./routes/parts";
 import { createPartsOrdersRouter } from "./routes/partsOrders";
 import { createModerationRouter } from "./routes/moderation";
 import { eraseAccount } from "./services/accountDeletion";
+import { LEGAL_TERMS_VERSION } from "./services/legal";
 import { classifyDomain } from "./ai/domainClassifier";
 import { searchParts, searchPartsByFilters, parsePartQuery } from "./ai/partsSearchEngine";
 import { respondWithPartsCandidates, buildDeterministicPartsReply } from "./ai/partsChat";
@@ -471,6 +472,10 @@ try { db.exec("ALTER TABLE cars ADD COLUMN is_promoted INTEGER DEFAULT 0"); } ca
 try { db.exec("ALTER TABLE cars ADD COLUMN promotion_expires DATETIME"); } catch (e) {}
 // Bumped to end every session a user already has (logout-all, password reset).
 try { db.exec("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0"); } catch (e) {}
+// Terms of Use / Privacy Policy acceptance at registration: when (server time)
+// and which version. NULL for accounts created before acceptance was recorded.
+try { db.exec("ALTER TABLE users ADD COLUMN terms_accepted_at DATETIME"); } catch (e) {}
+try { db.exec("ALTER TABLE users ADD COLUMN terms_version TEXT"); } catch (e) {}
 
 try {
   db.exec("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0");
@@ -1599,6 +1604,12 @@ async function startServer() {
     if (dealer_category !== undefined && !VALID_DEALER_CATEGORIES.includes(dealer_category)) {
       return res.status(400).json({ error: "Invalid dealer category" });
     }
+    // Google Play's user-generated content policy: accounts (buyers and dealers)
+    // must accept the Terms of Use and Privacy Policy before they can post.
+    // Only the JSON boolean true counts; "true", 1 or a missing field do not.
+    if (req.body?.accept_terms !== true) {
+      return res.status(400).json({ error: "You must accept the Terms of Use and Privacy Policy to create an account" });
+    }
 
     // reCAPTCHA verification
     if (process.env.RECAPTCHA_SECRET && !(await verifyRecaptcha(captchaToken))) {
@@ -1619,18 +1630,22 @@ async function startServer() {
       let userId: number;
       if (existingUser) {
         userId = existingUser.id;
-        db.prepare("UPDATE users SET password = ?, name = ?, role = ? WHERE id = ?").run(
+        db.prepare("UPDATE users SET password = ?, name = ?, role = ?, terms_accepted_at = CURRENT_TIMESTAMP, terms_version = ? WHERE id = ?").run(
           hashedPassword,
           escapedName,
           role || 'user',
+          LEGAL_TERMS_VERSION,
           userId
         );
       } else {
-        const result = db.prepare("INSERT INTO users (email, password, name, role, is_verified) VALUES (?, ?, ?, ?, 0)").run(
+        const result = db.prepare(
+          "INSERT INTO users (email, password, name, role, is_verified, terms_accepted_at, terms_version) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, ?)"
+        ).run(
           email,
           hashedPassword,
           escapedName,
-          role || 'user'
+          role || 'user',
+          LEGAL_TERMS_VERSION
         );
         userId = result.lastInsertRowid as number;
       }

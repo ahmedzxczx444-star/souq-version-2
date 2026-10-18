@@ -33,6 +33,7 @@ const buyer = User(id: 7, email: 'buyer@example.com', name: 'Buyer', role: 'user
 class FakeAuthRepository implements AuthRepository {
   final calls = <String>[];
   Map<String, dynamic>? lastRegisterExtra;
+  bool? lastAcceptTerms;
   ApiException? loginError;
   ApiException? registerError;
 
@@ -49,11 +50,13 @@ class FakeAuthRepository implements AuthRepository {
     required String password,
     required String name,
     required String role,
+    required bool acceptTerms,
     String? captchaToken,
     Map<String, dynamic> extra = const {},
   }) async {
     calls.add('register:$role:$email');
     lastRegisterExtra = extra;
+    lastAcceptTerms = acceptTerms;
     if (registerError != null) throw registerError!;
     return RegisterResult(email: email, requiresOtpVerification: true);
   }
@@ -275,7 +278,18 @@ void main() {
       await tester.enterText(fields.at(3), 'long-enough');
       await tester.tap(find.byType(ElevatedButton).first);
       await tester.pumpAndSettle();
+      expect(app.repo.calls, isEmpty, reason: 'the terms are not accepted yet');
+      expect(find.text('يجب الموافقة على شروط الاستخدام وسياسة الخصوصية لإنشاء حساب.'), findsOneWidget);
+      final accept = tester.widget<Checkbox>(find.byKey(const Key('accept-terms')));
+      expect(accept.value, isFalse, reason: 'unchecked by default');
+
+      await tester.ensureVisible(find.byKey(const Key('accept-terms')));
+      await tester.tap(find.byKey(const Key('accept-terms')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(ElevatedButton).first);
+      await tester.pumpAndSettle();
       expect(app.repo.calls, ['register:user:new@example.com']);
+      expect(app.repo.lastAcceptTerms, isTrue);
       expect(find.text('OTP register new@example.com'), findsOneWidget);
     });
 
@@ -305,7 +319,16 @@ void main() {
       await tester.ensureVisible(submit);
       await tester.tap(submit);
       await tester.pumpAndSettle();
+      expect(app.repo.calls, isEmpty, reason: 'dealers must accept the terms too');
+
+      await tester.ensureVisible(find.byKey(const Key('accept-terms')));
+      await tester.tap(find.byKey(const Key('accept-terms')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
       expect(app.repo.calls, ['register:dealer:dealer@example.com']);
+      expect(app.repo.lastAcceptTerms, isTrue);
       expect(app.repo.lastRegisterExtra?['phone'], '+201001234567');
       expect(app.repo.lastRegisterExtra?['whatsapp_number'], '+201001234567');
     });

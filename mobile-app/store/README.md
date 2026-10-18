@@ -85,6 +85,12 @@ verification code, so check that email delivery works first.
 
 ## Remaining blockers before a public release
 
+Done since the audit: sign-up (app and website, buyers and dealers) requires
+ticking acceptance of the Terms of Use and Privacy Policy, enforced and
+recorded by the server (see DEPLOYMENT.md, "Terms acceptance at
+registration"). The version recorded (`2026-10-17`) is the policy's current
+"last updated" date and still needs owner/legal approval of the texts.
+
 1. **Deploy** the backend and website so `/privacy` and `/delete-account` are
    live, then put both URLs in Play Console (store listing and Data safety).
 2. **Owner/legal approval of the policy text**, including the legal name of

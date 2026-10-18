@@ -165,10 +165,11 @@ class FakeAuthRepository implements AuthRepository {
     required String password,
     required String name,
     required String role,
+    required bool acceptTerms,
     String? captchaToken,
     Map<String, dynamic> extra = const {},
   }) async {
-    registered.add({'email': email, 'role': role, ...extra});
+    registered.add({'email': email, 'role': role, 'accept_terms': acceptTerms, ...extra});
     return RegisterResult(email: email, requiresOtpVerification: true);
   }
 
@@ -580,6 +581,9 @@ void main() {
       await tester.ensureVisible(phone);
       await tester.enterText(phone, '1001234567');
       await tester.enterText(whatsapp, '1001234567');
+      await tester.ensureVisible(find.byKey(const Key('accept-terms')));
+      await tester.tap(find.byKey(const Key('accept-terms')));
+      await tester.pumpAndSettle();
       final submit = find.byType(ElevatedButton).first;
       await tester.ensureVisible(submit);
       await tester.tap(submit);
@@ -596,6 +600,7 @@ void main() {
       await fillPhonesAndSubmit(tester);
       expect(repo.registered.single['business_type'], 'car_dealer');
       expect(repo.registered.single['dealer_category'], 'importer');
+      expect(repo.registered.single['accept_terms'], isTrue);
       expect(find.text('OTP'), findsOneWidget);
     });
 
@@ -608,6 +613,47 @@ void main() {
       await fillPhonesAndSubmit(tester);
       expect(repo.registered.single['business_type'], 'parts_dealer');
       expect(repo.registered.single.containsKey('dealer_category'), isFalse);
+    });
+
+    testWidgets('the terms and privacy links open the pages without accepting', (tester) async {
+      final repo = FakeAuthRepository();
+      await pump(tester,
+          initial: '/login',
+          prefs: const {'lang': 'en'},
+          routes: [
+            GoRoute(path: '/login', builder: (_, _) => const AuthScreen()),
+            GoRoute(path: '/terms', builder: (_, _) => const Scaffold(body: Text('TERMS PAGE'))),
+            GoRoute(path: '/privacy', builder: (_, _) => const Scaffold(body: Text('PRIVACY PAGE'))),
+          ],
+          overrides: [authRepositoryProvider.overrideWithValue(repo)]);
+      final toggle = find.byType(TextButton).at(1);
+      await tester.ensureVisible(toggle);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(find.text('I have read and agree to the'), findsOneWidget);
+
+      await tester.ensureVisible(find.byKey(const Key('open-terms')));
+      await tester.tap(find.byKey(const Key('open-terms')));
+      await tester.pumpAndSettle();
+      expect(find.text('TERMS PAGE'), findsOneWidget);
+      Navigator.of(tester.element(find.text('TERMS PAGE'))).pop();
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(const Key('open-privacy')));
+      await tester.tap(find.byKey(const Key('open-privacy')));
+      await tester.pumpAndSettle();
+      expect(find.text('PRIVACY PAGE'), findsOneWidget);
+      Navigator.of(tester.element(find.text('PRIVACY PAGE'))).pop();
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Checkbox>(find.byKey(const Key('accept-terms'))).value, isFalse, reason: 'reading the pages is not acceptance');
+      expect(repo.registered, isEmpty);
+    });
+
+    test('the repository sends the explicit acceptance to the server', () async {
+      final client = RecordingClient({'success': true, 'email': 'a@example.com', 'requiresOtpVerification': true});
+      await AuthRepository(client).register(email: 'a@example.com', password: 'password1', name: 'A', role: 'user', acceptTerms: true);
+      expect((client.sent.single.data as Map)['accept_terms'], isTrue);
     });
 
     testWidgets('missing fields are explained in the current language before anything is sent', (tester) async {

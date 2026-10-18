@@ -33,12 +33,15 @@ class AuthRepository {
   /// branches_count, address, latitude, longitude, logo, business_type,
   /// dealer_category) exactly as server.ts's POST /api/auth/register
   /// expects them — see AuthScreen.tsx's handleSubmit for the full payload
-  /// shape when role == 'dealer'.
+  /// shape when role == 'dealer'. [acceptTerms] is the user's explicit
+  /// acceptance of the Terms of Use and Privacy Policy; the server refuses
+  /// the account unless it is true.
   Future<RegisterResult> register({
     required String email,
     required String password,
     required String name,
     required String role,
+    required bool acceptTerms,
     String? captchaToken,
     Map<String, dynamic> extra = const {},
   }) async {
@@ -47,6 +50,7 @@ class AuthRepository {
       'password': password,
       'name': name,
       'role': role,
+      'accept_terms': acceptTerms,
       if (captchaToken != null) 'captchaToken': captchaToken,
       ...extra,
     });

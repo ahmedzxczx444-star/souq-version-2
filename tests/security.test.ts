@@ -69,7 +69,7 @@ describe("registration and login input handling", () => {
   test("nobody can register themselves as an administrator", async () => {
     for (const role of ["super_admin", "admin", "moderator"]) {
       const res = await api(server, "POST", "/api/auth/register", {
-        body: { email: `escalate-${role}@souq-test.invalid`, password: "password1", name: "X", role },
+        body: { accept_terms: true, email: `escalate-${role}@souq-test.invalid`, password: "password1", name: "X", role },
       });
       assert.equal(res.status, 400, role);
     }
@@ -79,7 +79,7 @@ describe("registration and login input handling", () => {
 
   test("a normal registration still answers with the existing contract", async () => {
     const res = await api(server, "POST", "/api/auth/register", {
-      body: { email: "buyer@souq-test.invalid", password: "password1", name: "Buyer", role: "user" },
+      body: { accept_terms: true, email: "buyer@souq-test.invalid", password: "password1", name: "Buyer", role: "user" },
     });
     assert.equal(res.status, 200);
     assert.equal(res.json.success, true);
@@ -209,7 +209,7 @@ describe("banned users", () => {
     // The re-verification path is closed too.
     assert.equal((await api(server, "POST", "/api/auth/send-otp", { body: { email: user.email, purpose: "register" } })).status, 400);
     const reRegister = await api(server, "POST", "/api/auth/register", {
-      body: { email: user.email, password: "password1", name: "Again", role: "user" },
+      body: { accept_terms: true, email: user.email, password: "password1", name: "Again", role: "user" },
     });
     assert.equal(reRegister.status, 400);
     assert.equal(withDb(server, (db) => (db.prepare("SELECT is_verified v FROM users WHERE id = ?").get(user.id) as any).v), -1);

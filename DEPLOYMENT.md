@@ -113,6 +113,22 @@ set UPLOADS_DIR=.\data\uploads
 npx tsx server.ts
 ```
 
+## Terms acceptance at registration
+
+`POST /api/auth/register` (buyers and dealers alike) requires
+`"accept_terms": true` — the JSON boolean; a missing field, `false`, `"true"`
+or `1` is answered `400 {"error": "You must accept the Terms of Use and
+Privacy Policy to create an account"}` and no account is created. The website
+and the app send it only after the user ticks the unchecked box on the sign-up
+form. The server stores its own time in `users.terms_accepted_at` and the
+accepted version in `users.terms_version`.
+
+The version is `LEGAL_TERMS_VERSION` in `services/legal.ts` (the "last
+updated" date of the published texts). Change it whenever the Terms or the
+Privacy Policy change. Accounts created before this was recorded keep `NULL`
+in both columns; they are not marked as accepted, and asking them to accept
+needs a separate sign-in flow.
+
 ## Tests
 
 ```

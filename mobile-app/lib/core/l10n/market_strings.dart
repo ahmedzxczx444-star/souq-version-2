@@ -144,6 +144,13 @@ extension MarketStrings on AppStrings {
   String get passwordRequired => _t('اكتب كلمة المرور', 'Enter your password');
   String get nameRequired => _t('اكتب الاسم', 'Enter your name');
   String get continueAsGuest => _t('تصفح بدون تسجيل', 'Continue as guest');
+  // Terms acceptance at sign-up (same wording as the website).
+  String get acceptTermsPrefix => _t('قرأت وأوافق على', 'I have read and agree to the');
+  String get termsOfUseLink => _t('شروط الاستخدام', 'Terms of Use');
+  String get termsAnd => _t('و', 'and the');
+  String get privacyPolicyLink => _t('سياسة الخصوصية', 'Privacy Policy');
+  String get termsRequired =>
+      _t('يجب الموافقة على شروط الاستخدام وسياسة الخصوصية لإنشاء حساب.', 'You must accept the Terms of Use and Privacy Policy to create an account.');
   String get phoneLabel => _t('رقم الهاتف', 'Phone number');
   String get whatsappLabel => _t('رقم واتساب', 'WhatsApp number');
   String get branchesLabel => _t('عدد الفروع', 'Number of branches');

@@ -12,6 +12,7 @@ import '../../../shared/widgets/primary_button.dart';
 import '../../../core/network/error_text.dart';
 import '../../../core/l10n/market_strings.dart';
 import '../../dealers/presentation/manage/dealer_widgets.dart' show LabeledDropdown;
+import '../../../core/l10n/app_strings.dart';
 
 enum _AuthMode { login, register, forgotPassword }
 
@@ -26,6 +27,55 @@ enum _AuthMode { login, register, forgotPassword }
 /// server.ts:1495 / :1716) — this screen omits `captchaToken` entirely, so
 /// it works as-is against any deployment that leaves that unset, and will
 /// need the above decision made before shipping against one that doesn't.
+/// The required "I accept the Terms of Use and Privacy Policy" line of the
+/// sign-up form, with links to both pages (Google Play's user-generated
+/// content policy). The links open the in-app pages without accepting.
+class _TermsAcceptance extends StatelessWidget {
+  const _TermsAcceptance({required this.accepted, required this.strings, required this.onChanged});
+
+  final bool accepted;
+  final AppStrings strings;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    const plain = TextStyle(fontSize: 13, height: 1.5, color: AppColors.gray600);
+    const link = TextStyle(fontSize: 13, height: 1.5, fontWeight: FontWeight.w800, color: AppColors.gray900, decoration: TextDecoration.underline);
+    final sentence = '${strings.acceptTermsPrefix} ${strings.termsOfUseLink} ${strings.termsAnd} ${strings.privacyPolicyLink}';
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          label: sentence,
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: Checkbox(
+              key: const Key('accept-terms'),
+              value: accepted,
+              activeColor: AppColors.emeraldAccent,
+              onChanged: (value) => onChanged(value ?? false),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Wrap(
+            spacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              GestureDetector(onTap: () => onChanged(!accepted), child: Text(strings.acceptTermsPrefix, style: plain)),
+              InkWell(key: const Key('open-terms'), onTap: () => context.push('/terms'), child: Text(strings.termsOfUseLink, style: link)),
+              Text(strings.termsAnd, style: plain),
+              InkWell(key: const Key('open-privacy'), onTap: () => context.push('/privacy'), child: Text(strings.privacyPolicyLink, style: link)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
@@ -42,6 +92,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   // category (POST /api/auth/register business_type / dealer_category).
   String _businessType = 'car_dealer';
   String _dealerCategory = 'single';
+  // Unchecked by default; only a deliberate tick counts as acceptance.
+  bool _acceptedTerms = false;
 
   final _name = TextEditingController();
   final _email = TextEditingController();
@@ -102,6 +154,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         setState(() => _error = strings.phoneFormatError);
         return;
       }
+      if (!_acceptedTerms) {
+        setState(() => _error = strings.termsRequired);
+        return;
+      }
     }
 
     setState(() => _loading = true);
@@ -127,6 +183,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         password: _password.text,
         name: _name.text.trim(),
         role: _role,
+        acceptTerms: _acceptedTerms,
         extra: _role == 'dealer'
             ? {
                 'phone': toEgyptE164(_phone.text),
@@ -278,6 +335,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       decoration: InputDecoration(hintText: strings.addressLabel),
                     ),
                   ],
+                ],
+                if (_mode == _AuthMode.register) ...[
+                  const SizedBox(height: 16),
+                  _TermsAcceptance(
+                    accepted: _acceptedTerms,
+                    strings: strings,
+                    onChanged: (value) => setState(() => _acceptedTerms = value),
+                  ),
                 ],
                 if (_error != null) ...[
                   const SizedBox(height: 16),

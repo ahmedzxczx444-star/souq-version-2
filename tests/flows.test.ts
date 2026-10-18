@@ -54,7 +54,7 @@ describe("registration, OTP and login", () => {
     const email = "flow-buyer@souq-test.invalid";
     const password = "buyer-pass-1";
 
-    const registered = await api(server, "POST", "/api/auth/register", { body: { email, password, name: "Flow Buyer", role: "user" } });
+    const registered = await api(server, "POST", "/api/auth/register", { body: { accept_terms: true, email, password, name: "Flow Buyer", role: "user" } });
     assert.equal(registered.status, 200);
     assert.equal(registered.json.requiresOtpVerification, true);
 
@@ -87,14 +87,14 @@ describe("registration, OTP and login", () => {
   test("registering an existing verified email is refused; a pending one is refreshed", async () => {
     const existing = createUser(server);
     const duplicate = await api(server, "POST", "/api/auth/register", {
-      body: { email: existing.email, password: "password1", name: "Dup", role: "user" },
+      body: { accept_terms: true, email: existing.email, password: "password1", name: "Dup", role: "user" },
     });
     assert.equal(duplicate.status, 400);
 
     const pendingEmail = "flow-pending@souq-test.invalid";
-    assert.equal((await api(server, "POST", "/api/auth/register", { body: { email: pendingEmail, password: "password1", name: "P", role: "user" } })).status, 200);
+    assert.equal((await api(server, "POST", "/api/auth/register", { body: { accept_terms: true, email: pendingEmail, password: "password1", name: "P", role: "user" } })).status, 200);
     // A second attempt inside the resend cooldown is rate limited, not an error page.
-    const again = await api(server, "POST", "/api/auth/register", { body: { email: pendingEmail, password: "password2", name: "P", role: "user" } });
+    const again = await api(server, "POST", "/api/auth/register", { body: { accept_terms: true, email: pendingEmail, password: "password2", name: "P", role: "user" } });
     assert.equal(again.status, 429);
     assert.equal(withDb(server, (db) => (db.prepare("SELECT COUNT(*) c FROM users WHERE email = ?").get(pendingEmail) as any).c), 1);
   });
@@ -118,7 +118,7 @@ describe("registration, OTP and login", () => {
   test("dealer: registers as pending, cannot publish until an admin approves", async () => {
     const email = "flow-dealer@souq-test.invalid";
     const registered = await api(server, "POST", "/api/auth/register", {
-      body: {
+      body: { accept_terms: true,
         email, password: "dealer-pass-1", name: "Flow Showroom", role: "dealer",
         phone: "+201012345678", whatsapp_number: "+201012345678", branches_count: 1, address: "Cairo",
       },
