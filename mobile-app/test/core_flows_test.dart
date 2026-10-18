@@ -563,7 +563,7 @@ void homeSearchLayoutTests() {
   testWidgets('the search field is wide enough to use and Smart AI sits below it', (tester) async {
     await pumpHome(tester, const Size(412, 915));
     final field = tester.getRect(find.byType(TextField));
-    final ai = tester.getRect(find.text('سوق السيارات الذكي'));
+    final ai = tester.getRect(find.text('أسواق السيارات الذكي'));
     expect(field.width, greaterThan(150), reason: 'was about 47 px wide on a 412 px phone');
     expect(ai.top, greaterThan(field.bottom), reason: 'the Smart AI button moves to its own row');
   });

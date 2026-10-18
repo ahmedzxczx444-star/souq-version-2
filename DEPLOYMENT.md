@@ -1,4 +1,4 @@
-# Deploying Souq Cars
+# Deploying Asuaq Cars
 
 One Node process serves everything: the REST API, uploaded media (`/uploads`),
 and the built website (`dist/`). Data lives in a SQLite file. That shape needs:
@@ -25,7 +25,7 @@ Set these in the platform, never in the repository.
 | `JWT_SECRET` | yes | random, 32+ characters: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
 | `BREVO_API_KEY` | yes | Brevo **API** key (`xkeysib-…`), not the SMTP key |
 | `BREVO_SENDER_EMAIL` | yes | a sender verified in Brevo, ideally on your authenticated domain |
-| `BREVO_SENDER_NAME` | no | defaults to `Souq Cars` |
+| `BREVO_SENDER_NAME` | no | defaults to `Asuaq Cars`. If it is set on the server, that value is the sender name shown in verification emails |
 | `DATABASE_PATH` | yes | `/data/automarket.db` (the Dockerfile sets it) |
 | `UPLOADS_DIR` | yes | `/data/uploads` (the Dockerfile sets it) |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | first deploy | creates the administrator; password 12+ characters. Remove `ADMIN_PASSWORD` afterwards |

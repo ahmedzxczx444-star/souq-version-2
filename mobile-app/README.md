@@ -1,6 +1,6 @@
-# Souq Cars mobile app
+# Asuaq Cars mobile app
 
-Flutter client for the Souq Cars marketplace (Android, iOS, Windows). It talks
+Flutter client for the Asuaq Cars marketplace (Android, iOS, Windows). It talks
 to the same Express backend as the website (`../server.ts`).
 
 ## Run against a local backend
@@ -94,6 +94,14 @@ Emulator: `D:\Android\Sdk\emulator\emulator.exe -avd souq_api35` (set
 `ANDROID_AVD_HOME=D:\Android\avd` first).
 
 ## Branding
+
+Brand: Asuaq Cars / أسواق السيارات. The approved logo (green symbol with the
+white A) is used for the external app icon only: `app_icon.png` (symbol on
+white) and `app_icon_foreground.png` (adaptive icon, inside the safe zone),
+cut from the approved artwork with its white background removed. Screens inside
+the app, including the native splash (`splash_logo.png`), show no logo. The
+Android launcher label is `@string/app_name` (`res/values` English,
+`res/values-ar` Arabic).
 
 Launcher icons and the native splash screen are generated from
 `assets/branding/`:

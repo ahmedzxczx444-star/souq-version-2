@@ -81,7 +81,7 @@ class CarCardWidget extends StatelessWidget {
   /// same prefilled message.
   Future<void> _share() async {
     final carUrl = '${ApiConfig.baseUrl}/car/${car.id}';
-    final text = 'السلام عليكم، أنا مهتم بسيارة ${car.make} ${car.model} ${car.year} موديل الموجودة على سوق السيارات.\n'
+    final text = 'السلام عليكم، أنا مهتم بسيارة ${car.make} ${car.model} ${car.year} موديل الموجودة على أسواق السيارات.\n'
         'السعر: ${_number.format(car.price)} ج.م\n'
         'الرابط: $carUrl\n'
         'الصورة: ${car.coverImage}';

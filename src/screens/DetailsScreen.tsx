@@ -30,7 +30,7 @@ export const DetailsScreen: React.FC<DetailsScreenProps> = ({ carId, onBack, onD
   const handleShare = () => {
     if (!car) return;
     const carUrl = `${window.location.origin}/car/${car.id}`;
-    const shareText = `شوف العربية دي على سوق السيارات:
+    const shareText = `شوف العربية دي على أسواق السيارات:
 ${car.make} ${car.model} ${car.year}
 السعر: ${car.price.toLocaleString()} ج.م
 الرابط:
@@ -214,7 +214,7 @@ ${carUrl}`;
           if (!whatsappLink) return null;
           return (
             <a
-              href={`${whatsappLink}?text=${encodeURIComponent(`السلام عليكم، أنا مهتم بسيارة ${car.make} ${car.model} ${car.year} موديل الموجودة على سوق السيارات.
+              href={`${whatsappLink}?text=${encodeURIComponent(`السلام عليكم، أنا مهتم بسيارة ${car.make} ${car.model} ${car.year} موديل الموجودة على أسواق السيارات.
 السعر: ${car.price.toLocaleString()} ج.م
 الرابط: ${window.location.origin}/car/${car.id}
 الصورة: ${car.images[0]}`)}`}

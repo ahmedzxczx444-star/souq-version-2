@@ -7,7 +7,7 @@
          the device, so a restored copy would be unreadable. Language and
          onboarding preferences simply start fresh on a new phone. -->
     <application
-        android:label="Souq Cars"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"

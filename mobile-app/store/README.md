@@ -5,9 +5,9 @@ is uploaded anywhere automatically, and nothing in it is a legal opinion.
 
 | File | Use in Play Console |
 | --- | --- |
-| `play-icon-512.png` | Store listing → App icon (512 × 512 PNG) |
-| `feature-graphic-1024x500.png` | Store listing → Feature graphic |
-| `screenshots/*.png` | Store listing → Phone screenshots (1080 × 2160, 2:1). Taken on the Android emulator against production; they show the listings that are on the site today. Replace them once real dealer listings exist. |
+| `play-icon-512.png` | Store listing → App icon (512 × 512 PNG). Asuaq Cars symbol on white, from the approved artwork |
+| `feature-graphic-1024x500.png` | Store listing → Feature graphic. **Outdated: still the Souq Cars design.** Replace it before uploading |
+| `screenshots/*.png` | Store listing → Phone screenshots (1080 × 2160, 2:1). **Outdated: they show the old Souq Cars name and icon.** Retake them from the rebranded build before uploading. |
 | `listing-draft.md` | Store listing texts (Arabic and English) |
 | `privacy-policy-draft.md` | Pointer only: the policy now lives in `src/constants/privacyPolicy.ts` and is served at `/privacy` |
 | This file | Answers to prepare for Data safety, content rating, app access and the release checklist |
@@ -36,11 +36,11 @@ Answer the form from this table; the privacy policy must say the same.
 | IP address | Server side, when a verification code is requested | Fraud and abuse prevention (rate limits) | Stored with the email in `otp_send_log` |
 | Location | No (the app does not request location) | | Dealer coordinates entered on the website are public |
 | Financial info / payments | No | | No payments in the app |
-| Messages | No in-app chat | | Contact happens in WhatsApp or the phone app, outside Souq Cars |
+| Messages | No in-app chat | | Contact happens in WhatsApp or the phone app, outside Asuaq Cars |
 | Reports and blocks | Yes, when a user reports content or blocks a dealer | Moderation, safety | Reporter, target, reason and optional details (`content_reports`); blocks (`user_blocks`). Not shown to the reported account |
 
 - **Shared with third parties:** none in Play's sense. Google (Gemini) and Brevo
-  process data on Souq Cars' behalf (service providers); Railway hosts the
+  process data on Asuaq Cars' behalf (service providers); Railway hosts the
   server. Name them in the privacy policy.
 - **Encrypted in transit:** yes (HTTPS only; plain HTTP is allowed in debug
   builds only).

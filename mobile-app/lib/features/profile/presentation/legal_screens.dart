@@ -251,7 +251,7 @@ class ContactScreen extends StatelessWidget {
           decoration: BoxDecoration(color: AppColors.black, borderRadius: BorderRadius.circular(32)),
           child: const Column(
             children: [
-              Text('سوق السيارات', style: TextStyle(color: AppColors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+              Text('أسواق السيارات', style: TextStyle(color: AppColors.white, fontSize: 20, fontWeight: FontWeight.w900)),
               SizedBox(height: 8),
               Text(
                 'منصتك الموثوقة لبيع وشراء السيارات في مصر',

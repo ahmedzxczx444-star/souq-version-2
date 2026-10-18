@@ -64,7 +64,7 @@ export const ContactScreen: React.FC<ContactScreenProps> = ({ onBack }) => {
         </div>
 
         <div className="mt-12 p-8 bg-black rounded-[32px] text-white text-center">
-          <h3 className="text-xl font-black mb-2">سوق السيارات</h3>
+          <h3 className="text-xl font-black mb-2">أسواق السيارات</h3>
           <p className="text-gray-400 text-sm">منصتك الموثوقة لبيع وشراء السيارات في مصر</p>
         </div>
       </div>

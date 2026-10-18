@@ -7,7 +7,7 @@ const privacyPolicyUpdated = '2026-10-17';
 const privacyPolicyAR = PolicyDocument(
   title: 'سياسة الخصوصية',
   updatedLabel: 'آخر تحديث',
-  intro: 'توضح هذه السياسة البيانات التي يجمعها سوق السيارات (الموقع souq-elsyrat.com وتطبيق Souq Cars على أندرويد) وكيف نستخدمها ونحميها، وكيف يمكنك حذف حسابك.',
+  intro: 'توضح هذه السياسة البيانات التي يجمعها أسواق السيارات (الموقع souq-elsyrat.com وتطبيق Asuaq Cars على أندرويد) وكيف نستخدمها ونحميها، وكيف يمكنك حذف حسابك.',
   sections: [
     PolicySection(
       title: '1. البيانات التي نجمعها',
@@ -56,7 +56,7 @@ const privacyPolicyAR = PolicyDocument(
     PolicySection(
       title: '5. التواصل خارج المنصة',
       paragraphs: [
-        'عند الضغط على اتصال أو واتساب ينتقل التواصل إلى تطبيق الهاتف أو واتساب ويخضع لسياساتهما. لا توجد محادثات داخل سوق السيارات.',
+        'عند الضغط على اتصال أو واتساب ينتقل التواصل إلى تطبيق الهاتف أو واتساب ويخضع لسياساتهما. لا توجد محادثات داخل أسواق السيارات.',
       ],
     ),
     PolicySection(
@@ -95,7 +95,7 @@ const privacyPolicyAR = PolicyDocument(
     PolicySection(
       title: '10. الأطفال',
       paragraphs: [
-        'سوق السيارات غير موجه للأطفال دون 18 عامًا.',
+        'أسواق السيارات غير موجه للأطفال دون 18 عامًا.',
       ],
     ),
     PolicySection(
@@ -110,7 +110,7 @@ const privacyPolicyAR = PolicyDocument(
 const privacyPolicyEN = PolicyDocument(
   title: 'Privacy Policy',
   updatedLabel: 'Last updated',
-  intro: 'This policy explains what data Souq Cars (the website souq-elsyrat.com and the Souq Cars Android app) collects, how we use and protect it, and how you can delete your account.',
+  intro: 'This policy explains what data Asuaq Cars (the website souq-elsyrat.com and the Asuaq Cars Android app) collects, how we use and protect it, and how you can delete your account.',
   sections: [
     PolicySection(
       title: '1. Data we collect',
@@ -157,9 +157,9 @@ const privacyPolicyEN = PolicyDocument(
       ],
     ),
     PolicySection(
-      title: '5. Contact outside Souq Cars',
+      title: '5. Contact outside Asuaq Cars',
       paragraphs: [
-        'When you tap Call or WhatsApp, the conversation continues in your phone app or WhatsApp under their policies. Souq Cars has no in-app chat.',
+        'When you tap Call or WhatsApp, the conversation continues in your phone app or WhatsApp under their policies. Asuaq Cars has no in-app chat.',
       ],
     ),
     PolicySection(
@@ -198,7 +198,7 @@ const privacyPolicyEN = PolicyDocument(
     PolicySection(
       title: '10. Children',
       paragraphs: [
-        'Souq Cars is not intended for children under 18.',
+        'Asuaq Cars is not intended for children under 18.',
       ],
     ),
     PolicySection(

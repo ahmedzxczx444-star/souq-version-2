@@ -190,8 +190,8 @@ class PartDetailsScreen extends ConsumerWidget {
       };
 
   static String _whatsappText(MarketPart part, AppStrings strings) => strings.isArabic
-      ? 'السلام عليكم، أنا مهتم بقطعة غيار ${part.name} الموجودة على سوق السيارات.'
-      : 'Hello, I am interested in the spare part "${part.name}" listed on Souq Cars.';
+      ? 'السلام عليكم، أنا مهتم بقطعة غيار ${part.name} الموجودة على أسواق السيارات.'
+      : 'Hello, I am interested in the spare part "${part.name}" listed on Asuaq Cars.';
 }
 
 class _Spec extends StatelessWidget {

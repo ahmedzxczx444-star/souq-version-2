@@ -1104,7 +1104,7 @@ async function startServer() {
   // Mode-specific instructions for the "respond" call - retrieval/grounding is already
   // done deterministically by searchCarsByFilters; this call only phrases the reply.
   function buildRespondPrompt(intent: ChatIntent, message: string, carContext: any[]): string {
-    const base = `انت مساعد ذكي متخصص في السيارات لسوق سيارات مصري اسمه "سوق السيارات". رد باللهجة المصرية أو العربية الفصحى البسيطة، بشكل ودود ومختصر واحترافي، زي خبير سيارات حقيقي.
+    const base = `انت مساعد ذكي متخصص في السيارات لسوق سيارات مصري اسمه "أسواق السيارات". رد باللهجة المصرية أو العربية الفصحى البسيطة، بشكل ودود ومختصر واحترافي، زي خبير سيارات حقيقي.
 السيارات المرشحة (مرشحة مسبقًا من قاعدة البيانات الفعلية، لا تخترع سيارات غير موجودة فيها): ${JSON.stringify(carContext)}
 رسالة المستخدم: "${message}"`;
 

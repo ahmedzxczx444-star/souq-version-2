@@ -27,7 +27,7 @@ export const PartDetailsScreen: React.FC<PartDetailsScreenProps> = ({ partId, on
   const handleShare = () => {
     if (!part) return;
     const partUrl = `${window.location.origin}/part/${part.id}`;
-    const shareText = `شوف قطعة الغيار دي على سوق السيارات:\n${part.name}\n${part.price ? part.price.toLocaleString() + " ج.م" : "اتصل للسعر"}\nالرابط:\n${partUrl}`;
+    const shareText = `شوف قطعة الغيار دي على أسواق السيارات:\n${part.name}\n${part.price ? part.price.toLocaleString() + " ج.م" : "اتصل للسعر"}\nالرابط:\n${partUrl}`;
     if (navigator.share) {
       navigator.share({ title: part.name, text: shareText, url: partUrl }).catch(() => {});
     } else {
@@ -168,7 +168,7 @@ export const PartDetailsScreen: React.FC<PartDetailsScreenProps> = ({ partId, on
       <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 p-6 flex gap-4 z-50">
         {whatsappLink && (
           <a
-            href={`${whatsappLink}?text=${encodeURIComponent(`السلام عليكم، أنا مهتم بقطعة غيار ${part.name} الموجودة على سوق السيارات.\nالرابط: ${window.location.origin}/part/${part.id}`)}`}
+            href={`${whatsappLink}?text=${encodeURIComponent(`السلام عليكم، أنا مهتم بقطعة غيار ${part.name} الموجودة على أسواق السيارات.\nالرابط: ${window.location.origin}/part/${part.id}`)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex-1 bg-emerald-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"

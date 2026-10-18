@@ -12,8 +12,8 @@ extension ModerationStrings on AppStrings {
   String get reportDealer => _t('الإبلاغ عن المعرض', 'Report this dealer');
   String get reportWhy => _t('ما المشكلة؟', 'What is wrong?');
   String get reportHint => _t(
-        'يراجع فريق سوق السيارات البلاغات ولن يعرف صاحب المحتوى من أبلغ عنه.',
-        'The Souq Cars team reviews reports. The owner is not told who reported them.',
+        'يراجع فريق أسواق السيارات البلاغات ولن يعرف صاحب المحتوى من أبلغ عنه.',
+        'The Asuaq Cars team reviews reports. The owner is not told who reported them.',
       );
   String reportReason(String reason) {
     switch (reason) {

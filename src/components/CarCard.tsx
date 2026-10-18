@@ -44,7 +44,7 @@ export const CarCard: React.FC<CarCardProps> = ({ car, onClick, isFavorite, onFa
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const carUrl = `${window.location.origin}/car/${car.id}`;
-    const shareText = `السلام عليكم، أنا مهتم بسيارة ${car.make} ${car.model} ${car.year} موديل الموجودة على سوق السيارات.
+    const shareText = `السلام عليكم، أنا مهتم بسيارة ${car.make} ${car.model} ${car.year} موديل الموجودة على أسواق السيارات.
 السعر: ${car.price.toLocaleString()} ج.م
 الرابط: ${carUrl}
 الصورة: ${car.images[0]}`;

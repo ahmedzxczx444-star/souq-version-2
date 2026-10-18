@@ -38,7 +38,11 @@ void main() {
     expect(gradle, isNot(contains('signingConfigs.getByName(if (hasReleaseKeystore) "release" else "debug")')));
   });
 
-  test('the store label is Souq Cars', () {
-    expect(manifest, contains('android:label="Souq Cars"'));
+  test('the launcher label is the localized brand name', () {
+    expect(manifest, contains('android:label="@string/app_name"'));
+    final english = File('android/app/src/main/res/values/strings.xml').readAsStringSync();
+    final arabic = File('android/app/src/main/res/values-ar/strings.xml').readAsStringSync();
+    expect(english, contains('<string name="app_name">Asuaq Cars</string>'));
+    expect(arabic, contains('<string name="app_name">أسواق السيارات</string>'));
   });
 }

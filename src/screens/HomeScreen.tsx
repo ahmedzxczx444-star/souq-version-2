@@ -128,7 +128,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onCarClick, onDealerClic
               className="h-14 px-4 bg-emerald-500 rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 text-white active:scale-95 transition-all"
             >
               <Sparkles size={20} />
-              <span className="font-bold text-sm whitespace-nowrap">سوق السيارات الذكي</span>
+              <span className="font-bold text-sm whitespace-nowrap">أسواق السيارات الذكي</span>
             </button>
           </div>
         </div>

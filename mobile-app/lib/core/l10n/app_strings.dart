@@ -133,7 +133,7 @@ class AppStrings {
   }
 
   static const ar = AppStrings(
-    appName: 'سوق السيارات',
+    appName: 'أسواق السيارات',
     home: 'الرئيسية',
     reels: 'فيديوهات',
     favorites: 'المفضلة',
@@ -144,7 +144,7 @@ class AppStrings {
     welcomeBack: 'مرحباً بعودتك',
     createAccount: 'إنشاء حساب',
     signInToContinue: 'سجل الدخول لمتابعة رحلة البحث',
-    joinExclusive: 'انضم إلى سوق السيارات الحصري',
+    joinExclusive: 'انضم إلى أسواق السيارات الحصري',
     fullName: 'الاسم الكامل',
     emailAddress: 'البريد الإلكتروني',
     password: 'كلمة المرور',
@@ -191,7 +191,7 @@ class AppStrings {
   );
 
   static const en = AppStrings(
-    appName: 'Souq Cars',
+    appName: 'Asuaq Cars',
     home: 'Home',
     reels: 'Reels',
     favorites: 'Favorites',

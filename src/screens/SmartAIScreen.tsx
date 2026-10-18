@@ -31,7 +31,7 @@ export const SmartAIScreen: React.FC<SmartAIScreenProps> = ({
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "مرحباً بك في سوق السيارات الذكي! أنا مساعدك الشخصي المدعوم بالذكاء الاصطناعي. كيف يمكنني مساعدتك اليوم في العثور على سيارة أحلامك؟"
+      content: "مرحباً بك في أسواق السيارات الذكي! أنا مساعدك الشخصي المدعوم بالذكاء الاصطناعي. كيف يمكنني مساعدتك اليوم في العثور على سيارة أحلامك؟"
     }
   ]);
   const [input, setInput] = useState("");
@@ -92,7 +92,7 @@ export const SmartAIScreen: React.FC<SmartAIScreenProps> = ({
             <Sparkles size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="font-black text-lg">سوق السيارات الذكي</h1>
+            <h1 className="font-black text-lg">أسواق السيارات الذكي</h1>
             <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">مساعدك الشخصي</p>
           </div>
         </div>

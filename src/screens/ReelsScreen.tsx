@@ -91,13 +91,13 @@ export const ReelsScreen: React.FC<ReelsScreenProps> = ({ onCarClick, onDealerCl
 
   const handleShare = async (reel: Reel) => {
     const shareUrl = `${window.location.origin}/reels/${reel.id}`;
-    const carTitle = reel.make && reel.model ? `${reel.make} ${reel.model}` : 'سوق السيارات';
+    const carTitle = reel.make && reel.model ? `${reel.make} ${reel.model}` : 'أسواق السيارات';
 
     try {
       if (navigator.share) {
         await navigator.share({
           title: carTitle,
-          text: "شوف السيارة دي على سوق السيارات",
+          text: "شوف السيارة دي على أسواق السيارات",
           url: shareUrl,
         });
       } else {

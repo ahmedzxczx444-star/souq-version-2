@@ -35,7 +35,7 @@ extension MarketStrings on AppStrings {
       _t('تُطبَّق الفلاتر على نتائج البحث الحالية.', 'Filters apply to the current search results.');
 
   // Smart AI
-  String get smartAi => _t('سوق السيارات الذكي', 'Smart Car Search');
+  String get smartAi => _t('أسواق السيارات الذكي', 'Smart Car Search');
   String get smartAiIntro => _t(
         'اسألني عن أي سيارة، مثلًا: "كيا سبورتاج"، "BMW موديل 2022" أو "عربية أوتوماتيك أقل من مليون جنيه".',
         'Ask me about any car, for example "Kia Sportage", "BMW 2022" or "an automatic car under one million EGP".',

@@ -5,19 +5,21 @@ Only features that exist in version 1.0.0 are described. Play limits: app name
 
 ## Arabic (default)
 
-**App name:** سوق السيارات - Souq Cars
+**App name:** أسواق السيارات - Asuaq Cars
+
+**Tagline:** اكتشف - قارن - اختر
 
 **Short description:**
 تصفح سيارات المعارض الموثوقة وقطع الغيار وتواصل مع التاجر مباشرة.
 
 **Full description:**
 
-سوق السيارات منصة لبيع وشراء السيارات في مصر، تجمع المعارض وتجار قطع الغيار في مكان واحد.
+أسواق السيارات منصة لبيع وشراء السيارات في مصر، تجمع المعارض وتجار قطع الغيار في مكان واحد.
 
 للمشترين:
 - تصفح أحدث السيارات المعروضة من المعارض مع الصور والسعر والمسافة المقطوعة.
 - ابحث بالماركة أو الموديل وفلتر النتائج حسب السعر وسنة الصنع والوقود وناقل الحركة والمدينة.
-- سوق السيارات الذكي: اكتب ما تبحث عنه بكلماتك واحصل على سيارات مقترحة.
+- أسواق السيارات الذكي: اكتب ما تبحث عنه بكلماتك واحصل على سيارات مقترحة.
 - قارن حتى 3 سيارات جنبًا إلى جنب.
 - احفظ السيارات المفضلة وتابع المعارض.
 - شاهد فيديوهات المعارض.
@@ -33,14 +35,14 @@ Only features that exist in version 1.0.0 are described. Play limits: app name
 
 ## English
 
-**App name:** Souq Cars - سوق السيارات
+**App name:** Asuaq Cars - أسواق السيارات
 
 **Short description:**
 Browse cars from trusted dealers and spare parts, and contact sellers directly.
 
 **Full description:**
 
-Souq Cars is a marketplace for buying and selling cars in Egypt that brings dealers and spare-parts sellers together.
+Asuaq Cars is a marketplace for buying and selling cars in Egypt that brings dealers and spare-parts sellers together.
 
 For buyers:
 - Browse the latest dealer listings with photos, price and mileage.

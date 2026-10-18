@@ -22,7 +22,7 @@ export const PartCard: React.FC<PartCardProps> = ({ part, onClick, t, variant = 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const partUrl = `${window.location.origin}/part/${part.id}`;
-    const shareText = `السلام عليكم، أنا مهتم بقطعة غيار ${part.name} الموجودة على سوق السيارات.\n${priceLabel}\nالرابط: ${partUrl}`;
+    const shareText = `السلام عليكم، أنا مهتم بقطعة غيار ${part.name} الموجودة على أسواق السيارات.\n${priceLabel}\nالرابط: ${partUrl}`;
     if (navigator.share) {
       try { await navigator.share({ title: part.name, text: shareText, url: partUrl }); } catch {}
     } else {

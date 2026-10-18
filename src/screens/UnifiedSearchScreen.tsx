@@ -30,7 +30,7 @@ export const UnifiedSearchScreen: React.FC<UnifiedSearchScreenProps> = ({ onBack
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "أهلاً! أنا البحث الذكي الموحد لسوق السيارات - اسألني عن أي سيارة أو قطعة غيار، أو ارفع صورة قطعة مش عارف اسمها وهلاقيها لك."
+      content: "أهلاً! أنا البحث الذكي الموحد لأسواق السيارات - اسألني عن أي سيارة أو قطعة غيار، أو ارفع صورة قطعة مش عارف اسمها وهلاقيها لك."
     }
   ]);
   const [input, setInput] = useState("");

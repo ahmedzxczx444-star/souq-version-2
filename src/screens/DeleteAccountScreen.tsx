@@ -17,7 +17,7 @@ interface DeleteAccountScreenProps {
 const copy = {
   ar: {
     title: "حذف الحساب",
-    intro: "احذف حسابك في سوق السيارات من هنا إذا لم يعد التطبيق متاحًا لديك. يمكنك أيضًا الحذف من التطبيق: الإعدادات ← حذف الحساب.",
+    intro: "احذف حسابك في أسواق السيارات من هنا إذا لم يعد التطبيق متاحًا لديك. يمكنك أيضًا الحذف من التطبيق: الإعدادات ← حذف الحساب.",
     removedTitle: "ما الذي يُحذف",
     removed: [
       "الاسم والبريد الإلكتروني وكلمة المرور، فلا يمكن الدخول بالحساب مرة أخرى.",
@@ -50,7 +50,7 @@ const copy = {
   },
   en: {
     title: "Delete your account",
-    intro: "Delete your Souq Cars account here if you no longer have the app. You can also delete it in the app: Settings → Delete account.",
+    intro: "Delete your Asuaq Cars account here if you no longer have the app. You can also delete it in the app: Settings → Delete account.",
     removedTitle: "What is deleted",
     removed: [
       "Your name, email and password, so the account can never sign in again.",

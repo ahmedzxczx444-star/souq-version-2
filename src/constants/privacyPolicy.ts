@@ -21,7 +21,7 @@ export const privacyPolicy: Record<Language, { title: string; updated: string; i
     title: "سياسة الخصوصية",
     updated: "آخر تحديث",
     intro:
-      "توضح هذه السياسة البيانات التي يجمعها سوق السيارات (الموقع souq-elsyrat.com وتطبيق Souq Cars على أندرويد) وكيف نستخدمها ونحميها، وكيف يمكنك حذف حسابك.",
+      "توضح هذه السياسة البيانات التي يجمعها أسواق السيارات (الموقع souq-elsyrat.com وتطبيق Asuaq Cars على أندرويد) وكيف نستخدمها ونحميها، وكيف يمكنك حذف حسابك.",
     sections: [
       {
         title: "1. البيانات التي نجمعها",
@@ -68,7 +68,7 @@ export const privacyPolicy: Record<Language, { title: string; updated: string; i
       {
         title: "5. التواصل خارج المنصة",
         paragraphs: [
-          "عند الضغط على اتصال أو واتساب ينتقل التواصل إلى تطبيق الهاتف أو واتساب ويخضع لسياساتهما. لا توجد محادثات داخل سوق السيارات.",
+          "عند الضغط على اتصال أو واتساب ينتقل التواصل إلى تطبيق الهاتف أو واتساب ويخضع لسياساتهما. لا توجد محادثات داخل أسواق السيارات.",
         ],
       },
       {
@@ -106,7 +106,7 @@ export const privacyPolicy: Record<Language, { title: string; updated: string; i
       },
       {
         title: "10. الأطفال",
-        paragraphs: ["سوق السيارات غير موجه للأطفال دون 18 عامًا."],
+        paragraphs: ["أسواق السيارات غير موجه للأطفال دون 18 عامًا."],
       },
       {
         title: "11. حقوقك والتواصل",
@@ -120,7 +120,7 @@ export const privacyPolicy: Record<Language, { title: string; updated: string; i
     title: "Privacy Policy",
     updated: "Last updated",
     intro:
-      "This policy explains what data Souq Cars (the website souq-elsyrat.com and the Souq Cars Android app) collects, how we use and protect it, and how you can delete your account.",
+      "This policy explains what data Asuaq Cars (the website souq-elsyrat.com and the Asuaq Cars Android app) collects, how we use and protect it, and how you can delete your account.",
     sections: [
       {
         title: "1. Data we collect",
@@ -165,9 +165,9 @@ export const privacyPolicy: Record<Language, { title: string; updated: string; i
         ],
       },
       {
-        title: "5. Contact outside Souq Cars",
+        title: "5. Contact outside Asuaq Cars",
         paragraphs: [
-          "When you tap Call or WhatsApp, the conversation continues in your phone app or WhatsApp under their policies. Souq Cars has no in-app chat.",
+          "When you tap Call or WhatsApp, the conversation continues in your phone app or WhatsApp under their policies. Asuaq Cars has no in-app chat.",
         ],
       },
       {
@@ -205,7 +205,7 @@ export const privacyPolicy: Record<Language, { title: string; updated: string; i
       },
       {
         title: "10. Children",
-        paragraphs: ["Souq Cars is not intended for children under 18."],
+        paragraphs: ["Asuaq Cars is not intended for children under 18."],
       },
       {
         title: "11. Your choices and contact",

@@ -18,6 +18,6 @@ void main() {
       ),
     );
 
-    expect(find.text('سوق السيارات'), findsOneWidget);
+    expect(find.text('أسواق السيارات'), findsOneWidget);
   });
 }
