@@ -165,6 +165,11 @@ export async function verifyOtp(email: string, purpose: OtpPurpose, code: string
  * Periodic cleanup of expired OTPs across all emails/purposes (defense in depth
  * alongside the per-request cleanup already done in sendOtp).
  */
+/** How long the verification-email log (email + IP) is kept; rate limits only look back one hour. */
+export const SEND_LOG_RETENTION_DAYS = 30;
+
 export function clearExpiredOtps() {
   db.prepare("DELETE FROM otp_codes WHERE otp_expires_at < ?").run(new Date().toISOString());
+  // created_at is SQLite's CURRENT_TIMESTAMP text, so compare with SQLite's own date maths.
+  db.prepare("DELETE FROM otp_send_log WHERE created_at < datetime('now', ?)").run(`-${SEND_LOG_RETENTION_DAYS} days`);
 }

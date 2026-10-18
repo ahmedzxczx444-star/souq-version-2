@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import Database from "better-sqlite3";
 import path from "path";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer } from "http";
@@ -24,6 +25,8 @@ import { createImporterRouter } from "./routes/importer";
 import { createOfficialAgentRouter } from "./routes/officialAgent";
 import { createPartsRouter } from "./routes/parts";
 import { createPartsOrdersRouter } from "./routes/partsOrders";
+import { createModerationRouter } from "./routes/moderation";
+import { eraseAccount } from "./services/accountDeletion";
 import { classifyDomain } from "./ai/domainClassifier";
 import { searchParts, searchPartsByFilters, parsePartQuery } from "./ai/partsSearchEngine";
 import { respondWithPartsCandidates, buildDeterministicPartsReply } from "./ai/partsChat";
@@ -837,6 +840,10 @@ async function startServer() {
     app.use("/api/parts", createPartsOrdersRouter({ db, authenticate }));
     app.use("/api/parts", createPartsRouter({ db, authenticate, genAI, cooldownMiddleware }));
   }
+
+  // Reporting objectionable content, blocking accounts and the admin review
+  // queue (routes/moderation.ts).
+  app.use("/api", createModerationRouter({ db, authenticate, isAdmin, uploadsDir: config.uploadsDir, logActivity }));
 
   // Shared helper: fetch all active-dealer cars with images parsed (used by /api/cars and /api/search)
   const getActiveCars = (): any[] => {
@@ -1915,38 +1922,31 @@ async function startServer() {
       return res.status(400).json({ error: "Administrator accounts cannot be deleted here" });
     }
 
-    const erase = db.transaction(() => {
-      const emailRow = db.prepare("SELECT email FROM users WHERE id = ?").get(user.id) as any;
-      db.prepare("DELETE FROM favorites WHERE user_id = ?").run(user.id);
-      db.prepare("DELETE FROM dealer_follows WHERE user_id = ?").run(user.id);
-      db.prepare("DELETE FROM dealer_ratings WHERE user_id = ?").run(user.id);
-      db.prepare("DELETE FROM reel_likes WHERE user_id = ?").run(user.id);
-      db.prepare("DELETE FROM notifications WHERE user_id = ?").run(user.id);
-      if (emailRow?.email) {
-        db.prepare("DELETE FROM otp_codes WHERE email = ?").run(emailRow.email);
-        db.prepare("DELETE FROM otp_send_log WHERE email = ?").run(emailRow.email);
-      }
-      db.prepare("UPDATE activity_log SET details = '' WHERE user_id = ?").run(user.id);
+    // What is removed and what is kept: services/accountDeletion.ts.
+    eraseAccount(db, user.id, config.uploadsDir);
+    res.json({ success: true });
+  });
 
-      const dealer = db.prepare("SELECT id FROM dealers WHERE user_id = ?").get(user.id) as any;
-      if (dealer) {
-        db.prepare(`
-          UPDATE dealers
-          SET status = 'deleted', name = 'Deleted dealer', logo = '', description = NULL, location = NULL,
-              phone = '', whatsapp_number = '', address = NULL, map_location_link = NULL, latitude = NULL, longitude = NULL
-          WHERE id = ?
-        `).run(dealer.id);
-        db.prepare("UPDATE cars SET status = 'hidden' WHERE dealer_id = ?").run(dealer.id);
-        db.prepare("DELETE FROM dealer_branches WHERE dealer_id = ?").run(dealer.id);
-        db.prepare("DELETE FROM dealer_follows WHERE dealer_id = ?").run(dealer.id);
-      }
-
-      db.prepare("UPDATE users SET email = ?, name = 'Deleted user', password = ?, is_verified = -1 WHERE id = ?")
-        .run(`deleted-${user.id}-${Date.now()}@deleted.invalid`, unusablePasswordHash(), user.id);
-      bumpTokenVersion(db, user.id);
-    });
-    erase();
-
+  // Account deletion from the website (required by Google Play for people who
+  // no longer have the app). The requester proves ownership with the account's
+  // email and password; a wrong password and an unknown email get the same
+  // answer, so the form never reveals whether an address is registered.
+  const DELETE_REQUEST_DUMMY_HASH = bcrypt.hashSync(crypto.randomBytes(16).toString("hex"), 10);
+  app.post("/api/account/delete-request", authLimiter, async (req, res) => {
+    const email = normalizeEmail(req.body?.email);
+    const password = req.body?.password;
+    const notVerified = { error: "We could not verify these details. Check the email and password, or reset your password first." };
+    if (!email || typeof password !== "string" || !password) return res.status(400).json(notVerified);
+    const user = db.prepare("SELECT id, role, password FROM users WHERE email = ?").get(email) as any;
+    // An unknown email still costs one bcrypt comparison, so response time
+    // does not reveal whether the address is registered.
+    const matches = await bcrypt.compare(password, user?.password || DELETE_REQUEST_DUMMY_HASH);
+    if (!user || !matches) return res.status(400).json(notVerified);
+    if (user.role === 'super_admin') {
+      return res.status(400).json({ error: "Administrator accounts cannot be deleted here" });
+    }
+    eraseAccount(db, user.id, config.uploadsDir);
+    logActivity("Account deleted from the website", user.id, "");
     res.json({ success: true });
   });
 
@@ -2601,7 +2601,7 @@ async function startServer() {
       FROM reels r
       JOIN dealers d ON r.dealer_id = d.id
       LEFT JOIN cars c ON r.car_id = c.id
-      WHERE d.status = 'active'
+      WHERE d.status = 'active' AND (r.car_id IS NULL OR c.status IS NULL OR c.status != 'hidden')
       ORDER BY r.created_at DESC
     `).all(userId);
     res.json(reels);

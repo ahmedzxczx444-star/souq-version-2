@@ -59,3 +59,14 @@ test("periodic cleanup removes only expired codes", () => {
   assert.equal(db.prepare("SELECT COUNT(*) c FROM otp_codes WHERE email = 'old@test.invalid'").get().c, 0);
   assert.equal(db.prepare("SELECT COUNT(*) c FROM otp_codes WHERE email = 'keep@test.invalid'").get().c, 1);
 });
+
+test("the verification-email log is kept for 30 days, then pruned", () => {
+  db.prepare("DELETE FROM otp_send_log").run();
+  const insert = db.prepare("INSERT INTO otp_send_log (email, ip, purpose, created_at) VALUES (?, '10.0.0.1', 'register', datetime('now', ?))");
+  insert.run("old@test.invalid", "-31 days");
+  insert.run("recent@test.invalid", "-29 days");
+  insert.run("now@test.invalid", "-1 minutes");
+  clearExpiredOtps();
+  const left = (db.prepare("SELECT email FROM otp_send_log ORDER BY email").all() as { email: string }[]).map((r) => r.email);
+  assert.deepEqual(left, ["now@test.invalid", "recent@test.invalid"]);
+});

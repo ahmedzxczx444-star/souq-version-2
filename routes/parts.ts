@@ -50,6 +50,9 @@ function parsePartRow(p: any) {
 // entry and part-number lookup; AI image/barcode recognition are added in a later
 // phase). Mounted at /api/parts by server.ts, fully additive - never touches /api/cars,
 // /api/search, or the existing car AI chat pipeline.
+/** Part states set by moderation or account deletion, which a dealer cannot change. */
+const MODERATED = ["hidden", "deleted"];
+
 export function createPartsRouter({ db, authenticate, genAI, cooldownMiddleware }: Deps) {
   const router = express.Router();
 
@@ -137,7 +140,9 @@ export function createPartsRouter({ db, authenticate, genAI, cooldownMiddleware 
   });
 
   router.get("/:id", (req, res) => {
-    const part = db.prepare("SELECT * FROM parts WHERE id = ?").get(req.params.id) as any;
+    const part = db.prepare(
+      "SELECT p.* FROM parts p JOIN dealers d ON d.id = p.dealer_id WHERE p.id = ? AND d.status = 'active' AND p.status NOT IN ('hidden', 'deleted')"
+    ).get(req.params.id) as any;
     if (!part) return res.status(404).json({ error: "Part not found" });
     db.prepare("UPDATE parts SET views = views + 1 WHERE id = ?").run(req.params.id);
     const dealer = db.prepare(
@@ -166,7 +171,8 @@ export function createPartsRouter({ db, authenticate, genAI, cooldownMiddleware 
       name ?? part.name, part_number ?? part.part_number, manufacturer ?? part.manufacturer,
       category ?? part.category, part_subtype ?? part.part_subtype, condition_status ?? part.condition_status,
       images ? JSON.stringify(images) : part.images, price !== undefined ? (price ? Number(price) : null) : part.price,
-      status === "unavailable" || status === "available" ? status : part.status,
+      // 'hidden' (admin moderation) and 'deleted' (account deletion) are not the dealer's to undo.
+      MODERATED.includes(part.status) ? part.status : status === "unavailable" || status === "available" ? status : part.status,
       delivery_supported !== undefined ? (delivery_supported ? 1 : 0) : part.delivery_supported,
       req.params.id
     );
@@ -185,8 +191,9 @@ export function createPartsRouter({ db, authenticate, genAI, cooldownMiddleware 
     if (!ctx) return;
     const { status } = req.body || {};
     if (status !== "available" && status !== "unavailable") return res.status(400).json({ error: "status must be 'available' or 'unavailable'" });
-    const part = db.prepare("SELECT id FROM parts WHERE id = ? AND dealer_id = ?").get(req.params.id, ctx.dealerId);
+    const part = db.prepare("SELECT id, status FROM parts WHERE id = ? AND dealer_id = ?").get(req.params.id, ctx.dealerId) as any;
     if (!part) return res.status(404).json({ error: "Part not found" });
+    if (MODERATED.includes(part.status)) return res.status(403).json({ error: "This part was removed by an administrator" });
     db.prepare("UPDATE parts SET status = ? WHERE id = ?").run(status, req.params.id);
     res.json({ success: true });
   });
@@ -218,7 +225,9 @@ export function createPartsRouter({ db, authenticate, genAI, cooldownMiddleware 
 
   router.get("/search/query", (req, res) => {
     const q = String(req.query.q || "");
-    const allParts = (db.prepare("SELECT * FROM parts WHERE status = 'available'").all() as any[]).map((p) => ({
+    const allParts = (db.prepare(
+      "SELECT p.* FROM parts p JOIN dealers d ON d.id = p.dealer_id WHERE p.status = 'available' AND d.status = 'active'"
+    ).all() as any[]).map((p) => ({
       ...parsePartRow(p),
       compatibility: getCompatibility(p.id),
     }));
