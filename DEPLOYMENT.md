@@ -29,7 +29,7 @@ Set these in the platform, never in the repository.
 | `DATABASE_PATH` | yes | `/data/automarket.db` (the Dockerfile sets it) |
 | `UPLOADS_DIR` | yes | `/data/uploads` (the Dockerfile sets it) |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | first deploy | creates the administrator; password 12+ characters. Remove `ADMIN_PASSWORD` afterwards |
-| `ADMIN_PASSWORD_FORCE_RESET` | no | `true` once, to replace an existing admin's password |
+| `ADMIN_PASSWORD_FORCE_RESET` | no | `true` to replace an existing admin's password with `ADMIN_PASSWORD`. Each `ADMIN_PASSWORD` value is applied once; later restarts leave the account alone (a warning is logged). Remove it afterwards |
 | `CORS_ORIGINS` | no | only if another website must call the API from the browser |
 | `SEED_DEMO_DATA` | first deploy | `true` loads the demo dealers and cars into an empty database, `false` starts empty. With an empty database and no value the server refuses to start (protection against a missing volume) |
 | `ALLOW_EPHEMERAL_STORAGE` | no | on Railway the server refuses to start unless a Volume is attached and holds `DATABASE_PATH` and `UPLOADS_DIR`. `true` skips that check — only for a throwaway service whose data may be lost on every deploy |

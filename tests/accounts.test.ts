@@ -113,6 +113,38 @@ test("admin variables added after the first start: new email is created, legacy 
   assert.ok(canLogIn(db, LEGACY_ADMIN, NEW_PASSWORD), "the earlier administrator is not touched");
 });
 
+test("a force reset left switched on applies each ADMIN_PASSWORD once, not on every restart", () => {
+  const db = existingDatabase();
+  bootstrapAccounts(db, config()); // retire the legacy passwords first
+  const forced = config({ adminEmail: LEGACY_ADMIN, adminPassword: NEW_PASSWORD, adminPasswordForceReset: true });
+
+  assert.equal(bootstrapAccounts(db, forced).admin, "reset");
+  assert.ok(canLogIn(db, LEGACY_ADMIN, NEW_PASSWORD));
+  const sessions = user(db, LEGACY_ADMIN).token_version;
+
+  // The admin changes the password in the app; later restarts keep it and keep the sessions.
+  db.prepare("UPDATE users SET password = ? WHERE email = ?").run(bcrypt.hashSync("changed-in-the-app", 4), LEGACY_ADMIN);
+  assert.equal(bootstrapAccounts(db, forced).admin, "unchanged");
+  assert.equal(bootstrapAccounts(db, forced).admin, "unchanged");
+  assert.ok(canLogIn(db, LEGACY_ADMIN, "changed-in-the-app"));
+  assert.equal(user(db, LEGACY_ADMIN).token_version, sessions, "restarts do not sign the admin out");
+
+  // A new ADMIN_PASSWORD value is applied once.
+  const next = config({ adminEmail: LEGACY_ADMIN, adminPassword: "another-strong-password", adminPasswordForceReset: true });
+  assert.equal(bootstrapAccounts(db, next).admin, "reset");
+  assert.ok(canLogIn(db, LEGACY_ADMIN, "another-strong-password"));
+  assert.equal(bootstrapAccounts(db, next).admin, "unchanged");
+});
+
+test("an admin created from the variables is not reset on the next start by a leftover force flag", () => {
+  const db = existingDatabase();
+  const forced = config({ adminEmail: "owner@test.invalid", adminPassword: NEW_PASSWORD, adminPasswordForceReset: true });
+  assert.equal(bootstrapAccounts(db, forced).admin, "created");
+  const sessions = user(db, "owner@test.invalid").token_version;
+  assert.equal(bootstrapAccounts(db, forced).admin, "unchanged");
+  assert.equal(user(db, "owner@test.invalid").token_version, sessions);
+});
+
 test("outside production no seed password is retired and an existing admin is not reset", () => {
   const db = existingDatabase();
   const result = bootstrapAccounts(db, config({ isProduction: false, adminEmail: LEGACY_ADMIN, adminPassword: NEW_PASSWORD }));

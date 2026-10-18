@@ -34,8 +34,8 @@ export function unusablePasswordHash(): string {
 /**
  * Creates the first super admin from ADMIN_EMAIL / ADMIN_PASSWORD when no
  * account with that email exists. An existing admin's password is only
- * replaced when ADMIN_PASSWORD_FORCE_RESET is set; an existing non-admin
- * account is never promoted.
+ * replaced when ADMIN_PASSWORD_FORCE_RESET is set, and then only once for
+ * each ADMIN_PASSWORD value; an existing non-admin account is never promoted.
  */
 export function ensureAdminAccount(
   db: Database.Database,
@@ -54,6 +54,7 @@ export function ensureAdminAccount(
       bcrypt.hashSync(config.adminPassword, 12),
       "Administrator"
     );
+    rememberAppliedAdminPassword(db, config.adminEmail, config.adminPassword);
     return "created";
   }
 
@@ -62,12 +63,34 @@ export function ensureAdminAccount(
     return "unchanged";
   }
 
-  if (config.adminPasswordForceReset || options.forceReset) {
+  // ADMIN_PASSWORD_FORCE_RESET applies each ADMIN_PASSWORD value once. Left
+  // switched on, it must not reset the password (and end the admin's
+  // sessions) on every restart, nor undo a password changed in the app.
+  const alreadyApplied = config.adminPasswordForceReset && adminPasswordAlreadyApplied(db, config.adminEmail, config.adminPassword);
+  if (options.forceReset || (config.adminPasswordForceReset && !alreadyApplied)) {
     db.prepare("UPDATE users SET password = ?, is_verified = 1 WHERE id = ?").run(bcrypt.hashSync(config.adminPassword, 12), existing.id);
     bumpTokenVersion(db, existing.id);
+    rememberAppliedAdminPassword(db, config.adminEmail, config.adminPassword);
     return "reset";
   }
+  if (alreadyApplied) {
+    console.warn("[accounts] ADMIN_PASSWORD_FORCE_RESET is set, but this ADMIN_PASSWORD was already applied; nothing was reset. Remove the variable.");
+  }
   return "unchanged";
+}
+
+const ADMIN_PASSWORD_APPLIED_KEY = "admin_password_applied:";
+
+function adminPasswordAlreadyApplied(db: Database.Database, email: string, password: string): boolean {
+  db.exec("CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT)");
+  const row = db.prepare("SELECT value FROM app_meta WHERE key = ?").get(ADMIN_PASSWORD_APPLIED_KEY + email) as { value: string } | undefined;
+  return Boolean(row && bcrypt.compareSync(password, row.value));
+}
+
+/** Records (as a bcrypt hash) which ADMIN_PASSWORD was last written to the admin account. */
+function rememberAppliedAdminPassword(db: Database.Database, email: string, password: string) {
+  db.exec("CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT)");
+  db.prepare("INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)").run(ADMIN_PASSWORD_APPLIED_KEY + email, bcrypt.hashSync(password, 10));
 }
 
 /** Accounts that earlier versions of the seed code created with passwords that are public in the repository's history. */
