@@ -1,5 +1,5 @@
 name: mobile_app
-description: "Souq Cars mobile app"
+description: "Asuaq Cars (أسواق السيارات) mobile app"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -94,7 +94,7 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: assets/branding/app_icon.png
-  adaptive_icon_background: "#064E3B"
+  adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: assets/branding/app_icon_foreground.png
   remove_alpha_ios: true
 
