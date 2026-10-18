@@ -31,6 +31,7 @@ import '../../features/parts/presentation/add_part_screen.dart';
 import '../../features/parts/presentation/my_part_orders_screen.dart';
 import '../../features/parts/presentation/part_details_screen.dart';
 import '../../features/parts/presentation/parts_marketplace_screen.dart';
+import '../../features/moderation/presentation/blocked_accounts_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/profile/presentation/legal_screens.dart';
 import '../../features/profile/presentation/profile_screen.dart';
@@ -49,6 +50,7 @@ const _protectedRoutePrefixes = [
   '/edit-profile',
   '/notifications',
   '/my-part-orders',
+  '/blocked-accounts',
   ..._dealerRoutePrefixes,
 ];
 
@@ -144,6 +146,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/compare', builder: (context, state) => const CompareCarsScreen()),
       GoRoute(path: '/notifications', builder: (context, state) => const NotificationsScreen()),
       GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
+      GoRoute(path: '/blocked-accounts', builder: (context, state) => const BlockedAccountsScreen()),
       GoRoute(path: '/terms', builder: (context, state) => const TermsScreen()),
       GoRoute(path: '/privacy', builder: (context, state) => const PrivacyScreen()),
       GoRoute(path: '/contact', builder: (context, state) => const ContactScreen()),

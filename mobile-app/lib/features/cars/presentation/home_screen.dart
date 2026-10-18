@@ -14,6 +14,7 @@ import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/car_card.dart';
 import '../../../shared/widgets/dealer_card.dart';
 import '../../../shared/widgets/web_layout.dart';
+import '../../moderation/data/moderation_repository.dart';
 import '../../../core/l10n/market_strings.dart';
 
 /// Home data, loaded together like HomeScreen.tsx's `Promise.all`.
@@ -78,8 +79,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final data = ref.watch(homeDataProvider);
     final favorites = ref.watch(favoritesProvider).valueOrNull ?? <int>{};
 
-    final cars = data.valueOrNull?.cars ?? const <Car>[];
-    final topDealers = data.valueOrNull?.topDealers ?? const <Dealer>[];
+    final blocked = ref.watch(blockedDealerIdsProvider);
+    final cars = [for (final c in data.valueOrNull?.cars ?? const <Car>[]) if (!blocked.contains(c.dealerId)) c];
+    final topDealers = [for (final d in data.valueOrNull?.topDealers ?? const <Dealer>[]) if (!blocked.contains(d.id)) d];
     final loading = data.isLoading && !data.hasValue;
 
     final query = _searchController.text.toLowerCase();

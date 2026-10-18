@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/l10n/app_strings.dart';
+import '../../../core/l10n/moderation_strings.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/image_urls.dart';
 import '../../../core/theme/app_colors.dart';
@@ -16,6 +17,8 @@ import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/web_layout.dart';
+import '../../moderation/data/moderation_repository.dart';
+import '../../moderation/presentation/report_sheet.dart';
 
 final reelsProvider = FutureProvider.autoDispose((ref) => ref.watch(dealerRepositoryProvider).getAllReels());
 
@@ -39,6 +42,7 @@ class ReelsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = ref.watch(stringsProvider);
     final reelsAsync = ref.watch(reelsProvider);
+    final blocked = ref.watch(blockedDealerIdsProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(strings.reels)),
@@ -53,7 +57,8 @@ class ReelsScreen extends ConsumerWidget {
             action: strings.isArabic ? 'إعادة المحاولة' : 'Retry',
             onAction: () => ref.invalidate(reelsProvider),
           ),
-          data: (reels) {
+          data: (all) {
+            final reels = [for (final r in all) if (!blocked.contains(r.dealerId)) r];
             if (reels.isEmpty) {
               return _Message(
                 icon: Icons.movie_outlined,
@@ -220,6 +225,13 @@ class _ReelPostState extends ConsumerState<ReelPost> {
                 Text('$_likes', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.gray900)),
                 const SizedBox(width: 4),
                 _IconAction(icon: Icons.share_outlined, color: AppColors.gray900, label: 'Share', onTap: _share),
+                _IconAction(
+                  key: Key('report-reel-${reel.id}'),
+                  icon: Icons.flag_outlined,
+                  color: AppColors.gray900,
+                  label: strings.reportReel,
+                  onTap: () => showReportSheet(context, ref, ReportTarget.reel, reel.id),
+                ),
                 const Spacer(),
                 const Icon(Icons.visibility_outlined, size: 14, color: AppColors.gray400),
                 const SizedBox(width: 4),
@@ -574,7 +586,7 @@ class _RoundControl extends StatelessWidget {
 }
 
 class _IconAction extends StatelessWidget {
-  const _IconAction({required this.icon, required this.color, required this.label, required this.onTap});
+  const _IconAction({super.key, required this.icon, required this.color, required this.label, required this.onTap});
 
   final IconData icon;
   final Color color;

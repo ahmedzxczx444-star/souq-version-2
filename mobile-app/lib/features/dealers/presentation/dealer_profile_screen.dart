@@ -17,6 +17,10 @@ import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/web_layout.dart';
 import '../../../core/l10n/market_strings.dart';
+import '../../../core/l10n/moderation_strings.dart';
+import '../../../core/network/error_text.dart';
+import '../../moderation/data/moderation_repository.dart';
+import '../../moderation/presentation/report_sheet.dart';
 
 typedef _DealerPage = ({DealerProfile profile, List<DealerReel> reels});
 
@@ -99,6 +103,47 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
     }
   }
 
+  Future<void> _onMenu(String action, AppStrings strings) async {
+    if (action == 'report') {
+      await showReportSheet(context, ref, ReportTarget.dealer, widget.dealerId);
+      return;
+    }
+    if (ref.read(authProvider).valueOrNull == null) {
+      context.push('/login');
+      return;
+    }
+    final notifier = ref.read(blockedAccountsProvider.notifier);
+    try {
+      if (action == 'unblock') {
+        final entry = ref.read(blockedAccountsProvider).valueOrNull?.where((b) => b.dealerId == widget.dealerId).firstOrNull;
+        if (entry == null) return;
+        await notifier.unblock(entry.userId);
+        if (mounted) _notify(strings.dealerUnblocked);
+        return;
+      }
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(strings.blockDealer),
+          content: Text(strings.blockDealerBody),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(strings.cancel)),
+            TextButton(
+              key: const Key('confirm-block'),
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(strings.blockDealer, style: const TextStyle(color: AppColors.red500)),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+      await notifier.blockDealer(widget.dealerId);
+      if (mounted) _notify(strings.dealerBlocked);
+    } catch (e) {
+      if (mounted) _notify(errorMessage(e, strings));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
@@ -123,6 +168,8 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
     final canInteract = user != null && !user.isDealer;
     final shownBranches = _showAllBranches ? branches : branches.take(3).toList();
     final mapLink = dealer.mapLocationLink;
+    final blocked = ref.watch(blockedDealerIdsProvider).contains(widget.dealerId);
+    final isOwn = user?.dealerId == widget.dealerId;
 
     return SingleChildScrollView(
       child: WebColumn(
@@ -140,9 +187,24 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: WebBackButton(onTap: () => context.pop(), padding: 12, radius: 16),
+                Row(
+                  children: [
+                    WebBackButton(onTap: () => context.pop(), padding: 12, radius: 16),
+                    const Spacer(),
+                    if (!isOwn)
+                      PopupMenuButton<String>(
+                        key: const Key('dealer-menu'),
+                        icon: const Icon(Icons.more_vert_rounded, color: AppColors.gray900),
+                        onSelected: (action) => _onMenu(action, strings),
+                        itemBuilder: (_) => [
+                          PopupMenuItem(value: 'report', child: Text(strings.reportDealer)),
+                          PopupMenuItem(
+                            value: blocked ? 'unblock' : 'block',
+                            child: Text(blocked ? strings.unblockDealer : strings.blockDealer),
+                          ),
+                        ],
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -365,6 +427,17 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
               ],
             ),
           ),
+          if (blocked)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 96),
+              child: Text(
+                strings.blockedDealerNotice,
+                key: const Key('blocked-dealer-notice'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.gray500),
+              ),
+            )
+          else ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
             child: Text(
@@ -389,6 +462,7 @@ class _DealerProfileScreenState extends ConsumerState<DealerProfileScreen> {
               ],
             ),
           ),
+          ],
           ],
         ),
       ),

@@ -129,3 +129,12 @@ flutter test test/live_api_contract_test.dart --dart-define=LIVE_API_CHECK=true 
 run with the installed SDK (its analyzer is older than the Dart version), so
 changes to the freezed models have to be mirrored in those files by hand
 until the generator dependencies are upgraded.
+
+## Privacy policy text
+
+`lib/features/profile/presentation/privacy_policy_text.dart` is generated from
+the website's policy (`src/constants/privacyPolicy.ts`, shown at `/privacy`),
+so both always say the same. After editing the policy, run from the
+repository root:
+
+    npx tsx mobile-app/tool/generate_privacy_policy.mts

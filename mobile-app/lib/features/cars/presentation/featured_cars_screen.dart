@@ -10,6 +10,7 @@ import '../../../shared/providers/favorites_provider.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/car_card.dart';
 import '../../../shared/widgets/web_layout.dart';
+import '../../moderation/data/moderation_repository.dart';
 
 final _featuredCarsProvider = FutureProvider.autoDispose((ref) async {
   final cars = await ref.watch(carRepositoryProvider).getAll();
@@ -26,7 +27,8 @@ class FeaturedCarsScreen extends ConsumerWidget {
     final strings = ref.watch(stringsProvider);
     final carsAsync = ref.watch(_featuredCarsProvider);
     final favorites = ref.watch(favoritesProvider).valueOrNull ?? <int>{};
-    final cars = carsAsync.valueOrNull ?? const [];
+    final blocked = ref.watch(blockedDealerIdsProvider);
+    final cars = [for (final c in carsAsync.valueOrNull ?? const []) if (!blocked.contains(c.dealerId)) c];
 
     return Scaffold(
       body: SafeArea(

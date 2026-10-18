@@ -10,6 +10,7 @@ import 'package:mobile_app/core/network/api_endpoints.dart';
 import 'package:mobile_app/core/network/api_exception.dart';
 import 'package:mobile_app/features/auth/data/auth_repository.dart';
 import 'package:mobile_app/features/profile/presentation/legal_screens.dart';
+import 'package:mobile_app/features/profile/presentation/privacy_policy_text.dart';
 import 'package:mobile_app/features/profile/presentation/settings_screen.dart';
 import 'package:mobile_app/shared/models/user.dart';
 import 'package:mobile_app/shared/providers/auth_provider.dart';
@@ -89,10 +90,15 @@ void main() {
     expect(ApiEndpoints.deleteAccount, '/api/auth/delete-account');
   });
 
-  test('legal pages carry the six sections published on the website', () {
-    expect(termsSections, hasLength(6));
-    expect(privacySections, hasLength(6));
-    expect(privacySections.last.body, contains('حذف حسابك'));
+  test('legal pages match the website: 7 terms sections, the same bilingual privacy policy', () {
+    expect(termsSections, hasLength(7));
+    expect(termsSections[5].title, contains('المحتوى المحظور'));
+    expect(termsSections.last.title, startsWith('7.'));
+    expect(privacyPolicyAR.sections, hasLength(11));
+    expect(privacyPolicyEN.sections, hasLength(privacyPolicyAR.sections.length));
+    expect(privacyPolicyEN.sections[5].title, '6. Reports and blocking');
+    expect(privacyPolicyEN.sections[7].title, '8. Deleting your account');
+    expect(privacyPolicyAR.sections[7].title, '8. حذف الحساب');
     expect(supportWhatsAppUri, 'https://wa.me/201155336849');
   });
 
@@ -115,6 +121,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('سياسة الخصوصية'), findsOneWidget);
     expect(find.text('1. البيانات التي نجمعها'), findsOneWidget);
+  });
+
+  testWidgets('the privacy policy follows the app language', (tester) async {
+    await pumpSettings(tester, user: null);
+    await tester.tap(find.byKey(const Key('settings-language')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings-privacy')));
+    await tester.pumpAndSettle();
+    expect(find.text('Privacy Policy'), findsOneWidget);
+    expect(find.text('1. Data we collect'), findsOneWidget);
+    final dir = tester.widget<Directionality>(
+      find.ancestor(of: find.text('1. Data we collect'), matching: find.byType(Directionality)).first,
+    );
+    expect(dir.textDirection, TextDirection.ltr);
   });
 
   testWidgets('change password validates locally, shows the server error, then succeeds', (tester) async {

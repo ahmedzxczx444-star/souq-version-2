@@ -7,6 +7,7 @@ import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/dealer_card.dart';
 import '../../../shared/widgets/web_layout.dart';
+import '../../moderation/data/moderation_repository.dart';
 
 final _allDealersProvider = FutureProvider.autoDispose((ref) => ref.watch(dealerRepositoryProvider).getAll());
 
@@ -19,7 +20,8 @@ class AllDealersScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = ref.watch(stringsProvider);
     final dealersAsync = ref.watch(_allDealersProvider);
-    final dealers = dealersAsync.valueOrNull ?? const [];
+    final blocked = ref.watch(blockedDealerIdsProvider);
+    final dealers = [for (final d in dealersAsync.valueOrNull ?? const []) if (!blocked.contains(d.id)) d];
 
     return Scaffold(
       body: SafeArea(

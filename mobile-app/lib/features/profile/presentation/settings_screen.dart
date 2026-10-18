@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/app_strings.dart';
+import '../../../core/l10n/moderation_strings.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/providers/auth_provider.dart';
@@ -108,6 +109,12 @@ class SettingsScreen extends ConsumerWidget {
                   icon: Icons.devices_other_rounded,
                   label: strings.logoutAll,
                   onTap: logoutAll,
+                ),
+                _SettingsTile(
+                  key: const Key('settings-blocked'),
+                  icon: Icons.block_rounded,
+                  label: strings.blockedAccounts,
+                  onTap: () => context.push('/blocked-accounts'),
                 ),
                 _SettingsTile(
                   key: const Key('settings-delete-account'),

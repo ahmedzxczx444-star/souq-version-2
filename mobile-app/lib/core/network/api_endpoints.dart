@@ -124,6 +124,11 @@ class ApiEndpoints {
   static String partOrder(int id) => '/api/parts/$id/order';
   static const myPartOrders = '/api/parts/my-orders';
 
+  // Reports and blocks (routes/moderation.ts)
+  static const reports = '/api/reports';
+  static const blocks = '/api/blocks';
+  static String unblock(int userId) => '/api/blocks/$userId';
+
   static const favorites = '/api/favorites';
   static String favoriteToggle(int carId) => '/api/favorites/$carId';
 }

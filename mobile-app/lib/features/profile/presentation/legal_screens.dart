@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/l10n/app_strings.dart';
+import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/web_layout.dart';
+import 'privacy_policy_text.dart';
 
 /// One numbered section of a legal page.
 class LegalSection {
@@ -37,36 +41,13 @@ const termsSections = [
     'يجب على جميع المستخدمين استخدام المنصة للأغراض القانونية فقط ووفقاً للقوانين واللوائح المعمول بها في جمهورية مصر العربية.',
   ),
   LegalSection(
-    '6. إخلاء المسؤولية',
+    '6. المحتوى المحظور والإبلاغ',
+    'يُمنع نشر أي محتوى احتيالي أو مضلل أو مسيء أو يحض على الكراهية أو العنف، أو محتوى جنسي، أو محتوى ينتهك حقوق الغير أو القانون، كما يُمنع انتحال الشخصية أو الإزعاج المتكرر. يمكن لأي مستخدم الإبلاغ عن سيارة أو قطعة غيار أو فيديو أو معرض أو مستخدم من داخل التطبيق، وحظر أي معرض لإخفاء محتواه. يراجع المشرفون البلاغات ويحق لهم إخفاء المحتوى المخالف أو حذفه وإيقاف الحساب المخالف أو حظره.\n\n'
+        'Fraudulent, misleading, abusive, hateful, violent, sexual or illegal content, impersonation and spam are not allowed. Anyone can report a car, part, video, dealer or user from the app and block a dealer to hide its content. Moderators review reports and may hide or remove content and suspend or ban accounts that break these rules.',
+  ),
+  LegalSection(
+    '7. إخلاء المسؤولية',
     'المنصة غير مسؤولة عن أي معاملات أو اتفاقيات تتم بين البائع والمشتري. ننصح دائماً بفحص السيارة جيداً والتأكد من الأوراق القانونية قبل إتمام أي عملية شراء.',
-  ),
-];
-
-/// Copied verbatim from src/screens/PrivacyScreen.tsx.
-const privacySections = [
-  LegalSection(
-    '1. البيانات التي نجمعها',
-    'نقوم بجمع بعض البيانات الأساسية لتقديم خدماتنا، وتشمل: البريد الإلكتروني، رقم الهاتف، ومعلومات الحساب التي تزودنا بها عند التسجيل.',
-  ),
-  LegalSection(
-    '2. لماذا نجمع هذه البيانات؟',
-    'نستخدم هذه البيانات لإنشاء حسابك، وتحسين تجربة المستخدم، والتواصل معك بخصوص إعلاناتك أو استفساراتك، ولضمان أمان المنصة.',
-  ),
-  LegalSection(
-    '3. حماية البيانات',
-    'نحن ملتزمون بحماية بياناتك الشخصية واستخدام تقنيات أمان متقدمة لمنع الوصول غير المصرح به أو تسريب المعلومات.',
-  ),
-  LegalSection(
-    '4. مشاركة البيانات',
-    'نحن نلتزم بعدم بيع أو تأجير بياناتك الشخصية لأي طرف ثالث لأغراض تسويقية. يتم استخدام البيانات فقط داخل إطار المنصة ولتحسين خدماتنا.',
-  ),
-  LegalSection(
-    '5. ملفات تعريف الارتباط (Cookies)',
-    'نستخدم ملفات تعريف الارتباط لتحسين تجربة التصفح، وتذكر تفضيلاتك، وتحليل كيفية استخدام المنصة لتطويرها باستمرار.',
-  ),
-  LegalSection(
-    '6. حقوق المستخدم',
-    'لديك الحق الكامل في تحديث بياناتك الشخصية أو طلب حذف حسابك وبياناتك من أنظمتنا في أي وقت من خلال إعدادات الحساب أو التواصل معنا.',
   ),
 ];
 
@@ -77,16 +58,19 @@ const supportWhatsAppUri = 'https://wa.me/201155336849';
 const supportEmail = 'Souqcars33@gmail.com';
 
 class _LegalScaffold extends StatelessWidget {
-  const _LegalScaffold({required this.title, required this.children});
+  const _LegalScaffold({required this.title, required this.children, this.rtl = true});
 
   final String title;
   final List<Widget> children;
 
+  /// The terms and contact pages are Arabic on the site; the privacy policy
+  /// follows the app language.
+  final bool rtl;
+
   @override
   Widget build(BuildContext context) {
-    // These pages are Arabic on the site whatever the app language.
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: AppColors.white,
         body: SafeArea(
@@ -162,11 +146,61 @@ class TermsScreen extends StatelessWidget {
   Widget build(BuildContext context) => const _LegalDocument(title: 'الشروط والأحكام', sections: termsSections);
 }
 
-class PrivacyScreen extends StatelessWidget {
+/// The privacy policy published at souq-elsyrat.com/privacy, in the app's
+/// language (privacy_policy_text.dart is generated from the website's copy).
+class PrivacyScreen extends ConsumerWidget {
   const PrivacyScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => const _LegalDocument(title: 'سياسة الخصوصية', sections: privacySections);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final arabic = ref.watch(languageProvider) == AppLanguage.ar;
+    final policy = arabic ? privacyPolicyAR : privacyPolicyEN;
+    const body = TextStyle(fontSize: 15, height: 1.6, color: AppColors.gray600);
+    return _LegalScaffold(
+      title: policy.title,
+      rtl: arabic,
+      children: [
+        Text(
+          '${policy.updatedLabel}: $privacyPolicyUpdated',
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gray400),
+        ),
+        const SizedBox(height: 8),
+        Text(policy.intro, style: body),
+        const SizedBox(height: 24),
+        for (var i = 0; i < policy.sections.length; i++)
+          Padding(
+            key: Key('policy-section-${i + 1}'),
+            padding: const EdgeInsets.only(bottom: 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  policy.sections[i].title,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.gray900),
+                ),
+                const SizedBox(height: 12),
+                for (final p in policy.sections[i].paragraphs)
+                  Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(p, style: body)),
+                for (final b in policy.sections[i].bullets)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(padding: EdgeInsets.only(top: 9), child: Icon(Icons.circle, size: 5, color: AppColors.gray400)),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(b, style: body)),
+                      ],
+                    ),
+                  ),
+                for (final n in policy.sections[i].notes)
+                  Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(n, style: body)),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 class ContactScreen extends StatelessWidget {

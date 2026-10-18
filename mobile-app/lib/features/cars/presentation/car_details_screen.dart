@@ -16,6 +16,8 @@ import '../../../shared/providers/favorites_provider.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/models/car.dart';
 import '../../../shared/widgets/web_layout.dart';
+import '../../moderation/data/moderation_repository.dart';
+import '../../moderation/presentation/report_sheet.dart';
 import '../../dealers/presentation/manage/dealer_widgets.dart' show ErrorView, errorMessage;
 
 final _carDetailsProvider = FutureProvider.autoDispose.family((ref, int id) {
@@ -97,6 +99,12 @@ class _CarDetailsScreenState extends ConsumerState<CarDetailsScreen> {
                           children: [
                             _GlassIconButton(icon: Icons.arrow_back_rounded, onTap: () => context.pop()),
                             Row(children: [
+                              _GlassIconButton(
+                                key: const Key('report-car'),
+                                icon: Icons.flag_outlined,
+                                onTap: () => showReportSheet(context, ref, ReportTarget.car, car.id),
+                              ),
+                              const SizedBox(width: 8),
                               _GlassIconButton(
                                 key: const Key('compare-toggle'),
                                 icon: inCompare ? Icons.playlist_add_check_rounded : Icons.compare_arrows_rounded,

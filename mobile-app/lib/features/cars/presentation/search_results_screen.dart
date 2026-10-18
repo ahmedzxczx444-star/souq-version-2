@@ -12,6 +12,7 @@ import '../../../shared/providers/favorites_provider.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/car_card.dart';
 import '../../../shared/widgets/web_layout.dart';
+import '../../moderation/data/moderation_repository.dart';
 import '../../dealers/presentation/manage/dealer_widgets.dart';
 import '../data/car_filters.dart';
 import '../data/car_repository.dart';
@@ -51,6 +52,7 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
     final resultAsync = ref.watch(searchResultsProvider(widget.query));
+    final blocked = ref.watch(blockedDealerIdsProvider);
     final favorites = ref.watch(favoritesProvider).valueOrNull ?? <int>{};
 
     return Scaffold(
@@ -89,7 +91,7 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
             strings: strings,
           ),
           data: (result) {
-            final shown = _filters.apply(result.cars);
+            final shown = _filters.apply([for (final c in result.cars) if (!blocked.contains(c.dealerId)) c]);
             if (shown.isEmpty) {
               return Center(
                 child: Column(

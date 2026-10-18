@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/l10n/app_strings.dart';
 import '../../../core/l10n/market_strings.dart';
+import '../../../core/l10n/moderation_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/phone_utils.dart';
 import '../../../shared/providers/auth_provider.dart';
@@ -14,6 +15,8 @@ import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/car_image_carousel.dart';
 import '../../../shared/widgets/web_layout.dart';
 import '../../dealers/presentation/manage/dealer_widgets.dart' show ErrorView, LoadingView, errorMessage, showMessage;
+import '../../moderation/data/moderation_repository.dart';
+import '../../moderation/presentation/report_sheet.dart';
 import '../data/market_repository.dart';
 
 final partDetailsProvider = FutureProvider.autoDispose.family<MarketPart, int>(
@@ -37,7 +40,18 @@ class PartDetailsScreen extends ConsumerWidget {
     final partAsync = ref.watch(partDetailsProvider(partId));
 
     return Scaffold(
-      appBar: AppBar(title: Text(strings.partsMarket)),
+      appBar: AppBar(
+        title: Text(strings.partsMarket),
+        actions: [
+          if (partAsync.hasValue)
+            IconButton(
+              key: const Key('report-part'),
+              tooltip: strings.reportPart,
+              icon: const Icon(Icons.flag_outlined),
+              onPressed: () => showReportSheet(context, ref, ReportTarget.part, partId),
+            ),
+        ],
+      ),
       body: WebColumn(
         child: partAsync.when(
           loading: () => const LoadingView(),

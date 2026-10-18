@@ -12,6 +12,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/language_provider.dart';
 import '../../../shared/widgets/web_layout.dart';
+import '../../moderation/data/moderation_repository.dart';
 import '../../dealers/presentation/manage/dealer_widgets.dart' show EmptyView, ErrorView, LoadingView, errorMessage;
 import '../data/market_repository.dart';
 
@@ -52,6 +53,7 @@ class _PartsMarketplaceScreenState extends ConsumerState<PartsMarketplaceScreen>
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
     final result = ref.watch(partsSearchProvider(_query));
+    final blocked = ref.watch(blockedDealerIdsProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(strings.partsMarket)),
@@ -78,7 +80,8 @@ class _PartsMarketplaceScreenState extends ConsumerState<PartsMarketplaceScreen>
                   strings: strings,
                 ),
                 data: (r) {
-                  if (r.parts.isEmpty) {
+                  final parts = [for (final p in r.parts) if (!blocked.contains(p.dealerId)) p];
+                  if (parts.isEmpty) {
                     return Center(
                       child: EmptyView(icon: Icons.settings_suggest_rounded, title: _query.isEmpty ? strings.noParts : strings.noPartsMatch),
                     );
@@ -87,9 +90,9 @@ class _PartsMarketplaceScreenState extends ConsumerState<PartsMarketplaceScreen>
                     onRefresh: () => ref.refresh(partsSearchProvider(_query).future),
                     child: ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                      itemCount: r.parts.length,
+                      itemCount: parts.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, i) => PartTile(part: r.parts[i], strings: strings),
+                      itemBuilder: (context, i) => PartTile(part: parts[i], strings: strings),
                     ),
                   );
                 },
